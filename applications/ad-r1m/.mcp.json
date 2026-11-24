@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "ad-r1m-slam": {
+      "command": "node",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/mcp-servers/ad-r1m-slam/server.mjs"
+      ],
+      "env": {
+        "ROBOT_HOST": "${ROBOT_HOST:-}",
+        "ROBOT_USER": "${ROBOT_USER:-analog}",
+        "ROBOT_PASSWORD": "${ROBOT_PASSWORD:-analog}",
+        "CLOUDSMITH_USER": "${CLOUDSMITH_USER:-}",
+        "CLOUDSMITH_TOKEN": "${CLOUDSMITH_TOKEN:-}"
+      }
+    }
+  }
+}
