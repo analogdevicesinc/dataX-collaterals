@@ -1,0 +1,80 @@
+{
+  "_comment": "Where to find each package, plus background facts - not scores. package_evidence gathers live data (repository, robot apt/installed state); the agent scores it per EVALUATION_CRITERIA.md. fieldNotes are observations from running on AD-R1M; notes are general facts about the package.",
+  "packages": {
+    "rtabmap_ros": {
+      "aliases": [
+        "RTAB-Map",
+        "rtabmap"
+      ],
+      "repo": "https://github.com/introlab/rtabmap_ros",
+      "apt": "rtabmap-ros",
+      "rosPackage": "rtabmap_slam",
+      "fieldNotes": "Runs on ad-r1m-16/18 as ToF depth + AB image as RGB (skills/ad-r1m-robot/templates/rtabmap_depth_rgb_launch.py, tested 2026-11-10/17). Best setup on ad-r1m-18 (2026-11-18): Grid/RangeMax 2.0 removed false far-floor obstacles (3.0 let a small camera tilt lift the floor above Grid/MaxGroundHeight 0.08); ~30-40 ms per update at 2 Hz, ~13% CPU; works with Nav2 navigation_launch.py using RTAB-Map's /map.",
+      "notes": "Visual, visual-inertial, ICP and RGB-D SLAM; RGB-D, stereo, depth cameras and LiDAR. CPU-only. ROS 2 Humble/Iron/Rolling. Nav2 integration (occupancy grid). Runs on ARM. Most versatile for depth/ToF cameras."
+    },
+    "orb_slam3_ros2": {
+      "aliases": [
+        "ORB-SLAM3",
+        "ORB_SLAM3",
+        "orb_slam3"
+      ],
+      "repo": "https://github.com/zang09/ORB_SLAM3_ROS2",
+      "rosPackage": "orbslam3",
+      "notes": "Monocular, stereo, RGB-D. CPU-only (OpenCV, Pangolin, Eigen). ROS 2 Humble via a community wrapper built from source with ORB_SLAM3. No occupancy grid, so limited Nav2. Heavy for the RPi 5 (feature tracking every frame). ORB features on the 512x512 ToF AB image are untested on AD-R1M."
+    },
+    "slam_toolbox": {
+      "aliases": [
+        "SLAM Toolbox"
+      ],
+      "repo": "https://github.com/SteveMacenski/slam_toolbox",
+      "apt": "slam-toolbox",
+      "rosPackage": "slam_toolbox",
+      "fieldNotes": "The robot's built-in slam compose profile uses it on the /scan synthesized from the ToF depth image.",
+      "notes": "2D LiDAR SLAM, CPU-only, the default Nav2 SLAM. Not suitable for depth cameras alone."
+    },
+    "plain_slam_ros2": {
+      "aliases": [
+        "plain_slam",
+        "PlainSLAM"
+      ],
+      "rosPackage": "plain_slam_ros2",
+      "notes": "LiDAR + IMU, CPU-only, ROS 2. Requires a LiDAR; not compatible with depth-only robots. No known repository."
+    },
+    "mola_lidar_odometry": {
+      "aliases": [
+        "MOLA",
+        "mola_slam",
+        "mola"
+      ],
+      "repo": "https://github.com/MOLAorg/mola_lidar_odometry",
+      "apt": "mola-lidar-odometry",
+      "rosPackage": "mola_lidar_odometry",
+      "fieldNotes": "Runs on ad-r1m-18 (2026-11-18) with the ToF /cam1/point_cloud as its 3D 'LiDAR' input and /imu (skills/ad-r1m-robot/templates/mola_icp_launch.py): /lidar_odometry/pose at 9.9 Hz, pose_quality 1.0, map->odom TF, mola-cli ~1 CPU core; octomap_server adds a 2D /map. Sensor topics are subscribed by the separate mola_bridge_ros2 module, so messageTypesInCode is empty for this repo. Narrow ~70 deg FOV: expect drift and roll/pitch error in open spaces.",
+      "notes": "LiDAR (2D/3D) odometry, optional IMU (LO and LIO modes), front-end for MOLA SLAM. CPU-only. ROS 2 Humble/Jazzy/Rolling. Moderate-heavy compute. GPL-3.0."
+    },
+    "gs_icp_slam": {
+      "aliases": [
+        "GS-ICP",
+        "GS_ICP_SLAM"
+      ],
+      "repo": "https://github.com/Lab-of-AI-and-Robotics/GS_ICP_SLAM",
+      "notes": "Gaussian-splatting ICP SLAM for point clouds. Requires a high-end GPU; limited ROS 2 support. Impractical on embedded hardware."
+    },
+    "kiss_icp": {
+      "aliases": [
+        "KISS-ICP",
+        "kiss-icp"
+      ],
+      "repo": "https://github.com/PRBonn/kiss-icp",
+      "apt": "kiss-icp",
+      "rosPackage": "kiss_icp",
+      "notes": "ICP odometry on any point cloud. CPU-only, lightweight, ROS 2. No loop closure, so it drifts over time."
+    },
+    "dm_vio": {
+      "aliases": [
+        "DM-VIO"
+      ],
+      "notes": "Monocular camera + IMU visual-inertial odometry, CPU-only. ROS 1 only: not compatible with ROS 2."
+    }
+  }
+}
