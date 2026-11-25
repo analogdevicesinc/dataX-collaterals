@@ -19,6 +19,8 @@ research behind them is in RTAB_RESEARCH.md.
 - [Issue 11: No Wheel TF (drives failed to boot)](#issue-11-no-wheel-tf-drives-failed-to-boot)
 - [Issue 12: Bringup Fails With "mkdir .../ros_data/log: file exists"](#issue-12-bringup-fails-with-mkdir-ros_datalog-file-exists)
 - [Issue 13: RViz Drops Every Scan (frame `/cam1_scan`)](#issue-13-rviz-drops-every-scan-frame-cam1_scan)
+- [Issue 14: RViz Drops Every Scan (stale ToF clock)](#issue-14-rviz-drops-every-scan-as-earlier-than-all-the-data-in-the-transform-cache)
+- [Issue 15: Floor Mapped as Obstacles (two camera TF publishers)](#issue-15-floor-mapped-as-obstacles-tables-as-ground-two-camera-tf-publishers)
 - [Quick Diagnostic Checklist](#quick-diagnostic-checklist)
 - [Template Quick Reference](#template-quick-reference)
 
@@ -61,6 +63,8 @@ already models the mount, so the published data is already correct.
 - Do not add static transforms that rotate the camera frame
 
 Check the TF instead: `ros2 run tf2_ros tf2_echo base_link cam1_adtf31xx_optical`.
+If nothing flips the data and the floor is still mapped as obstacles, two nodes may publish the
+camera's optical TF with opposite rotations: Issue 15.
 
 ---
 
@@ -311,14 +315,26 @@ ever logs `Driver booted and ready`.
 
 ### Fix, in escalation order
 
-1. `restart target=stack`: compose `stop` + `start`, not `down` + `up -d` (`down` removes the
-   containers; `start` alone is a no-op on a running container). This re-runs the entrypoints
-   and the drive boot, and clears the normal case. Wait ~30 s before checking again.
-2. If it recurs, `restart target=slcan`: re-runs `ad-r1m-slcan.service` (NMT-resets every
-   drive, power-cycles the slcan adapter MCU, recreates `can0`) with the `robot` and `motors`
-   services stopped around it, then reports `can0` and the nodes sending heartbeats. A drive
-   whose heartbeat already shows OPERATIONAL does not re-announce on restart, which points at
-   a startup race (check `boot_timeout_ms` in `bus.yml`) rather than hardware.
+Every restart follows the same order: stop `ad-r1m-bringup`, `docker compose --env-file
+ad-r1m.env down` in the active config folder (fresh containers, nothing reused), the hardware
+`systemctl restart` if any, then `systemctl start ad-r1m-bringup`. Never `compose stop` +
+`start`: on ad-r1m-18 (2026-11-25) it left `drive_left` failing its boot three times in a row,
+while `down`, `systemctl restart ad-r1m-slcan`, bringup start booted both drives. Without
+`--env-file ad-r1m.env`, compose fails (`DOCKER_IMAGE` unset) and nothing is taken down.
+
+1. `restart target=stack`: the sequence above with no hardware reset. Re-runs the drive boot.
+   Wait ~30 s before checking again.
+2. If it recurs, `restart target=slcan`: the same with `ad-r1m-slcan.service` restarted while
+   the stack is down (NMT-resets every drive, power-cycles the slcan adapter MCU, recreates
+   `can0`), then reports `can0` and the nodes sending heartbeats. A drive whose heartbeat
+   already shows OPERATIONAL or PRE-OPERATIONAL (`7F`) may not re-announce; that alone is not
+   a fault. If it answers an SDO read (`cansend can0 616#4000100000000000` → `596` reply) it
+   is alive on CAN.
+   A second failure mode looks the same from outside (spawners loop, no `/joint_states`
+   publisher) but `ros2_control_node` stays alive: `drive_left` logs `Driver booted and
+   ready`, `drive_right` logs its scale settings and then nothing, and `controller_manager`
+   never serves its services. Run the same restart again; on ad-r1m-18 the next
+   `restart target=slcan` booted both drives.
 3. Read the node list (`canBus`): `drive_right` 0x14 (heartbeat `0x714`), `drive_left` 0x16
    (`0x716`), `05` = OPERATIONAL.
    - **A drive with no heartbeat is a hardware fault** that no restart clears. The log shows
@@ -402,6 +418,96 @@ Use the same ref for both, preferably the newer one:
 
 Quick workaround: remove the `namespace:=` argument from the `tof` service in
 `~/demo/compose.yaml` and restart it.
+
+---
+
+## Issue 14: RViz Drops Every Scan as "earlier than all the data in the transform cache"
+
+### Error
+The RViz log repeats, with scan stamps minutes in the past:
+
+```
+Message Filter dropping message: frame 'cam1_scan' at time <T> for reason 'the timestamp on the message is earlier than all the data in the transform cache'
+```
+
+`/scan` itself publishes at 10 Hz with the right frame; its `header.stamp.sec` is far behind
+`date +%s` on the robot (ad-r1m-18, 2026-11-25, after a power cycle: ~700 s). `robot_status`,
+`diagnostics target=slam` and every `restart` report it as `tofClock` (`ok: false`,
+`offsetS`), measured from one `/cam1/camera_info` header against the robot clock.
+
+### Cause
+Seen on ad-r1m-18 (2026-11-25) after a power cycle, from the robot and camera journals:
+
+1. `ad-r1m-tof.service` (`/usr/lib/ad-r1m/tof.sh`) runs at ~5 s, before the camera answers
+   ping, prints `Couldn't reach ToF camera` and does not retry.
+2. The Pi has no RTC: its chronyd steps the clock by ~700 s from internet NTP at ~14 s.
+3. The camera's chrony (`server 192.168.56.10`, `makestep 1 -1`) first synced to the wrong
+   pre-step time, then reported `no selectable sources` after the Pi's jump and only stepped
+   to the right time ~5 min later.
+4. The camera's ROS node (`ros2-docker-app.service`) kept the old time base: scans stayed
+   ~700 s behind even after the camera's system clock was correct, until the node restarted.
+
+`tof.sh` would fix it (makestep + node restart), but it runs too early. A second bug: root
+had no host key for 192.168.56.1, so later runs failed with "Host key verification failed"
+(the script prints `Couldn't reach ToF camera` for that too, even though its ping succeeded).
+
+### Fix
+1. Check: `sudo ssh -o BatchMode=yes analog@192.168.56.1 true` → `Host key verification failed`.
+   With the user's agreement (it trusts the key on the USB link), save the key for root and
+   analog: `ssh-keyscan 192.168.56.1` into `~/.ssh/known_hosts` and `/root/.ssh/known_hosts`.
+   Don't pipe it into `sudo -S` (sudo reads the key as its password); copy a temp file instead.
+2. A minute after boot (Pi clock synced: `timedatectl` "System clock synchronized: yes"),
+   `restart target=tof`: the unit shows `200 OK` twice and restarts the camera node. Scan
+   stamps then match `date +%s` within ~1 s and stay right across later stack restarts.
+3. Then `restart target=slcan` if the stack restart left the drives down (Issue 11).
+
+Proper fix, in ad-r1m-ros2 `system/` (the `ad-r1m-system-rpi5` package), not this plugin:
+order the unit after `time-sync.target` (with `chrony-wait.service`) or `chronyc waitsync`
+first, retry the ping for ~60 s, then makestep and restart the node; use
+`ssh -o StrictHostKeyChecking=accept-new`.
+
+---
+
+## Issue 15: Floor Mapped as Obstacles, Tables as Ground (two camera TF publishers)
+
+### Error
+RTAB-Map's grid marks the floor as obstacles and leaves tables/desks out, while no
+preprocessing flips anything. `tf2_echo base_link cam1_adtf31xx_optical` shows RPY about
+(-90, 0, -90) (optical +y -> base_link -z, an upright camera). In `base_link` the dense floor
+band sits a few cm above 0 and desks appear ~0.7 m *below* the floor.
+
+### Cause
+Two nodes publish the same static transform `cam1_adtf31xx -> cam1_adtf31xx_optical` on
+`/tf_static`, with opposite rotations:
+
+| Publisher | Rotation | |
+|---|---|---|
+| robot URDF (`robot_state_publisher`, `_tof_adtf3175d.xacro`) | (+90, 0, +90) | models the inverted mount: correct |
+| camera `ros_app` on 192.168.56.1 (`adi_3dtof_adtf31xx_launch.py`, `cam1_base_to_optical_tf_desc`) | (-90, 0, -90) | upright camera: wrong on AD-R1M |
+
+Both are latched; every listener keeps whichever reached it last, which depends on start
+order. Camera node or stack restarts can flip the result, so the same code maps correctly
+one day and upside down the next (ad-r1m-18: correct 2026-11-18, wrong 2026-11-25).
+
+Check: list the `/tf_static` entries for child `cam1_adtf31xx_optical` (subscribe with
+transient_local QoS). Two entries = this issue.
+
+### Fix (applied on ad-r1m-18, 2026-11-25)
+On the camera (`ssh analog@192.168.56.1` from the robot), files are root-owned, so use sudo:
+1. Back up `/home/analog/docker-compose.yml` (`docker-compose.yml.bak-tf`).
+2. `docker cp ros_app:/opt/ros/adi_ros2/share/adi_3dtof_adtf31xx/launch/adi_3dtof_adtf31xx_launch.py`
+   to `/home/analog/config/adi_3dtof_adtf31xx_launch.py` (keep a `.orig`), and comment out
+   only `cam1_base_to_optical_tf_desc,` in its `LaunchDescription`.
+3. Mount it read-only over the original: add
+   `- /home/analog/config/adi_3dtof_adtf31xx_launch.py:/opt/ros/adi_ros2/share/adi_3dtof_adtf31xx/launch/adi_3dtof_adtf31xx_launch.py:ro`
+   under `volumes:` in `docker-compose.yml`.
+4. `sudo systemctl restart ros2-docker-app`; `ros_app` then runs only the ToF node.
+5. Restart every TF listener started before (SLAM, Nav2, RViz): they keep the cached wrong
+   transform.
+
+Verify: one `/tf_static` entry (roll +90, yaw +90), and in `base_link` the floor band at
+~0-5 cm. Undo: restore the compose backup and restart `ros2-docker-app`. Upstream, the camera
+image (or ad-r1m-ros2) should not publish this transform.
 
 ---
 

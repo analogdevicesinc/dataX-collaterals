@@ -119,11 +119,15 @@ image is not on the robot): `build_robot_image action=start`, poll `action=statu
 1. `robot_status`: state, containers, sensor flags and `drives`. `drives.healthy` false means a
    CANopen drive did not boot even though the container runs: `ad-r1m-robot` skill, "Wheel
    drives".
-2. `robot_status.topics` should include `/cam1/depth_image`, `/cam1/point_cloud`, `/imu`,
+2. `robot_status.tofClock.ok` must be true. After a power cycle the ToF can publish with stamps
+   minutes old (`offsetS`): RViz then shows no scan and SLAM gets nothing although every topic
+   is listed. Fix: `restart target=tof` once `robotNtp` is true (`ad-r1m-robot` skill,
+   COMMON_FIXES.md Issue 14).
+3. `robot_status.topics` should include `/cam1/depth_image`, `/cam1/point_cloud`, `/imu`,
    `/odometry/filtered` and `/scan`.
-3. `robot_status detail=full` adds the `ad-r1m-*` services, packages, images, network, disk and
+4. `robot_status detail=full` adds the `ad-r1m-*` services, packages, images, network, disk and
    temperature.
-4. If something is wrong: `ros2_query kind=logs name=ad-r1m-robot-1`, `robot_config
+5. If something is wrong: `ros2_query kind=logs name=ad-r1m-robot-1`, `robot_config
    action=active` (which config folder the robot boots with), or `collect_support_bundle` to
    send to support.
 
@@ -152,8 +156,11 @@ pixi workspace activation env set ZENOH_CONFIG_OVERRIDE="connect/endpoints=['tcp
 pixi run rviz2
 ```
 
-`pixi run ros2 run teleop_twist_keyboard teleop_twist_keyboard` drives the robot from the
-keyboard. Only suggest it when the user wants to drive, and remind them the robot will move.
+To drive the robot from the keyboard, use the robot's `teleop_keyboard` service, which also
+resets the kill switch (`ad-r1m-robot` skill, "Driving the robot"). The PC's
+`pixi run ros2 run teleop_twist_keyboard teleop_twist_keyboard` only publishes `/cmd_vel` and
+does nothing until the kill switch is reset. Only suggest driving when the user wants to drive,
+and remind them the robot will move.
 
 ## Examples
 

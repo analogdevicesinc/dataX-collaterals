@@ -215,8 +215,11 @@ let pixiJob = null;
 function pixiState() {
   const manifest = path.join(PIXI_WS, "pixi.toml");
   const toml = fs.existsSync(manifest) ? fs.readFileSync(manifest, "utf8") : "";
-  const missing = pixiPackages().slice(0, 2).filter((p) => !toml.includes(p));
-  return { binary: pixiBinary(), workspace: PIXI_WS, ready: !!toml && !missing.length, missing, setup: { ...pixiJob, log: PIXI_LOG, tail: tailOf(PIXI_LOG) }, installHint: PIXI_INSTALL };
+  const missing = pixiPackages().filter((p) => !toml.includes(p));
+  // RViz runs with desktop + rmw_zenoh; setup adds the rest (e.g. the Navigation 2 panel) to an
+  // existing workspace, such as one made before a package was added to pixiPackages.
+  const ready = !!toml && !pixiPackages().slice(0, 2).some((p) => missing.includes(p));
+  return { binary: pixiBinary(), workspace: PIXI_WS, ready, missing, setup: { ...pixiJob, log: PIXI_LOG, tail: tailOf(PIXI_LOG) }, installHint: PIXI_INSTALL };
 }
 
 const nativeSetup = () => {
@@ -228,7 +231,7 @@ const nativeSetup = () => {
 function pixiSetup() {
   const pixi = pixiBinary();
   if (!pixi) throw new Error(`pixi is not installed on this PC. ${PIXI_INSTALL} Then call rviz action=setup again.`);
-  if (pixiState().ready) return { started: false, reason: "Pixi workspace is already set up" };
+  if (!pixiState().missing.length) return { started: false, reason: "Pixi workspace is already set up" };
   if (pixiJob?.running) return { started: false, reason: "Setup is already running" };
   fs.mkdirSync(RVIZ_DIR, { recursive: true });
   fs.mkdirSync(PIXI_WS, { recursive: true });

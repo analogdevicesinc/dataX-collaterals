@@ -36,7 +36,8 @@ const TOOLS = [
     name: "robot_status",
     description:
       "AD-R1M health in one call: onboarding state, containers, ROS topics, sensor flags (ToF /cam1, /scan, " +
-      "/odometry/filtered) and wheel drives (ros2_control controllers, /joint_states, CAN heartbeats when unhealthy). " +
+      "/odometry/filtered), ToF clock offset (tofClock: stale stamps break TF and SLAM while topics look fine) and " +
+      "wheel drives (ros2_control controllers, /joint_states, CAN heartbeats when unhealthy). " +
       "detail=full adds systemd services, packages, images, network, disk and temperature.",
     inputSchema: obj({ ...HOST, detail: str("status (default) or full", ["status", "full"]) }),
     annotations: RO,
@@ -108,9 +109,10 @@ const TOOLS = [
   {
     name: "restart",
     description:
-      "Restart robot software or hardware. target=stack: docker compose stop + start in the active config folder " +
-      "(re-runs the CANopen drive boot). slcan / crsf / imu / tof: restart that ad-r1m-* unit (sudo) after stopping the " +
-      "compose services that hold it; slcan resets can0 and all drives and reports which CANopen nodes answer.",
+      "Restart robot software or hardware (sudo): stop ad-r1m-bringup, compose down, restart the ad-r1m-* unit " +
+      "(slcan / crsf / imu / tof; none for stack), start ad-r1m-bringup. Fresh containers re-run the CANopen drive " +
+      "boot. slcan resets can0 and all drives and reports which nodes answer. not_restarted lists profile services " +
+      "(slam, nav) to start again with their own tools.",
     inputSchema: obj({ ...HOST, target: str("stack (default), slcan, crsf, imu or tof", ["stack", "slcan", "crsf", "imu", "tof"]) }),
     annotations: { ...CHANGES, idempotentHint: true },
     run: robot.restart,

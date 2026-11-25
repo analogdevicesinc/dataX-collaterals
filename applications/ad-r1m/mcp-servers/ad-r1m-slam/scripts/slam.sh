@@ -44,7 +44,9 @@ sleep 4
 section launch
 pgrep -f "ros2 launch slam_integration" || echo none
 section nodes
-ros2 node list 2>/dev/null | grep -viE "robot_state|controller|drive|ekf|imu|tof|scan|transform" | head -10
+# SLAM nodes only (tested templates and catalog packages). Nodes of the robot stack
+# (/crsf_node, /twist_mux, ...) stay out, so an empty list means no SLAM is running.
+ros2 node list 2>/dev/null | grep -iE "rtabmap|slam|mola|kiss|orb|icp|cartographer|octomap|odometry|preprocess"
 section log
 pgrep -f "ros2 launch slam_integration" >/dev/null || tail -20 /tmp/slam.log 2>/dev/null'
 

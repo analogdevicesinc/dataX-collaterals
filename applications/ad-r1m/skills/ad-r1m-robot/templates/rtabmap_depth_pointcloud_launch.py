@@ -39,7 +39,9 @@ def generate_launch_description():
             'input_topic': '/cam1/ab_image',
             'output_topic': '/cam1/ab_processed',
             'target_encoding': 'mono8',  # log-scaled, see image_preprocess.py
-            'ab_max': 8191,               # AB saturates at ~8190 (13-bit)
+            'ab_max': 8191,               # AB peaks at ~7600
+            'ab_min': 3,                  # camera abThreshMin: AB below it is zeroed
+            'fill_invalid': True,         # no corners on the zeroed holes
         }],
         output='screen'
     )

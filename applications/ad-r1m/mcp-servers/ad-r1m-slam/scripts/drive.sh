@@ -42,3 +42,12 @@ drive_check() {
     can_nodes
   fi
 }
+
+# ToF stamps vs the robot clock (COMMON_FIXES.md Issue 14): a stale camera time base passes
+# every topic and rate check. $2: seconds to wait for a message.
+tof_clock() {
+  section clock
+  echo "robot_ntp=$(timedatectl show -p NTPSynchronized --value 2>/dev/null)"
+  rosx "$1" "s=\$(timeout -k 2 ${2:-8} ros2 topic echo --once /cam1/camera_info sensor_msgs/msg/CameraInfo --field header.stamp.sec 2>/dev/null | grep -m1 -E '^[0-9]+\$')
+echo \"tof_offset_s=\${s:+\$((\$(date +%s) - s))}\""
+}

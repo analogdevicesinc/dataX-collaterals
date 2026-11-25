@@ -20,6 +20,7 @@ if docker ps --format '{{.Names}}' | grep -qx "$C"; then
   section topics
   rosx "$C" 'timeout -k 2 20 ros2 topic list 2>/dev/null'
   drive_check "$C"
+  tof_clock "$C"
 fi
 [ "$MODE" = full ] || exit 0
 

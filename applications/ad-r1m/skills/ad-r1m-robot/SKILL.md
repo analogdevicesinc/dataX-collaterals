@@ -67,10 +67,11 @@ file is kept as `<file>.prev` in the `slam_integration` package.
 |---|---|---|
 | `slamNodes` empty | SLAM not running | `slam action=start`; if `started` is false, read `logTail` |
 | `publishers./scan` 0 | No laser scan | Check `depthimage_to_laserscan` in the robot container |
-| publisher > 0 but `hz` 0 | Publisher with no messages in 6 s | ToF node or EKF inputs stalled; `restart target=tof` for the camera |
+| publisher > 0 but `hz` 0 | Publisher with no messages in 6 s | `/cam1/point_cloud`: first `ros2_query kind=params name=/cam1/adi_3dtof_adtf31xx_node`; `param_enable_point_cloud_publish: false` is a config choice, not a fault (COMMON_FIXES.md Issue 10), and only `depth_pointcloud` / `nav action=start_pointcloud` need it. Otherwise the ToF node or EKF inputs stalled: `restart target=tof` for the camera |
 | `tf.odom->base_link` missing | No odometry TF | robot_localization EKF / wheel odometry |
 | `tf.map->odom` missing | SLAM not publishing its TF yet | Wait for the first map update, else check the launch log |
 | `drives.healthy` false | Wheel controllers down | "Wheel drives" below |
+| `tofClock.ok` false (`offsetS` far from 0) | ToF stamps on a stale camera time base: topics and rates look fine, but TF, RTAB-Map and the costmaps drop every scan (RViz: "earlier than all the data in the transform cache") | Typical after a power cycle. If `robotNtp` is false, wait for it. Then `restart target=tof` (its output repeats `tofClock`), then check drives (COMMON_FIXES.md Issue 14) |
 
 ### Tuning
 
@@ -103,6 +104,27 @@ Keep `Mem/ImagePreDecimation` and `Mem/ImagePostDecimation` equal: post 2 with p
   publisher, which needs `/map` (from RTAB-Map or the robot's slam_toolbox). If the lifecycle
   nodes are not active, restart nav after SLAM publishes the map.
 
+## Driving the robot
+
+The robot's own `teleop_keyboard` compose service (profile `oneoff`) drives it and toggles the
+kill switch. It reads single keypresses, so the user runs it in their own terminal:
+
+```bash
+ssh -t analog@<robot>.local
+cd ~/demo   # the active config folder (robot_config action=active)
+docker compose --env-file ad-r1m.env run --rm teleop_keyboard
+```
+
+1. `p`: activate the kill switch. Driving stays disabled until this is pressed once.
+2. `r`: reset the kill switch and enable the motors.
+3. `u i o / j k l / m , .` to drive. Limits come from `ros_data/teleop_parameters.yaml`
+   (`max_vel` 0.5 m/s, `max_rot` 1.0 rad/s by default).
+
+A teleop on the PC (`pixi run ros2 run teleop_twist_keyboard teleop_twist_keyboard`) only
+publishes `/cmd_vel` and cannot reset the kill switch, so it does nothing on its own (ad-r1m-18,
+2026-11-25). The RC transmitter (`crsf_node`) also works. Remind the user the robot will move,
+and suggest driving only when they ask; it drives during mapping too.
+
 ## Wheel drives
 
 A failed CANopen drive boot leaves the robot container running, and the EKF still publishes
@@ -115,15 +137,19 @@ heartbeats (`canBus`: `drive_right` 0x14, `drive_left` 0x16).
 
 Fix in this order (details in COMMON_FIXES.md, Issue 11):
 
-1. `restart target=stack` (compose stop + start re-runs the drive boot). Right after a
-   restart, wait ~30 s before checking again.
-2. `restart target=slcan`: resets can0 and all drives, then reports which nodes answer.
+1. `restart target=stack` (bringup stop, `compose --env-file ad-r1m.env down`, bringup start:
+   fresh containers re-run the drive boot). Right after a restart, wait ~30 s before checking
+   again. Never use `compose stop` + `start` by hand.
+2. `restart target=slcan`: the same with can0 and all drives reset while the stack is down,
+   then reports which nodes answer. Restarts drop running SLAM / Nav2 (`not_restarted`):
+   start them again with `slam` / `nav`.
 3. Read `canBus`: a missing 0x14/0x16 is power or cable; a node at 0x17 is an ADRD3161 on its
    factory DIP setting (set S2 to 110 for left, 100 for right, power-cycle).
 4. Drives boot but the joints never activate: the TMC9660 is untuned (COMMON_FIXES.md).
 
 Other hardware units: `restart target=crsf` (RC receiver), `imu` (`/imu` silent), `tof` (ToF
-topics silent; `unit` output says if the camera at 192.168.56.1 is unreachable).
+topics silent, or stale stamps with `tofClock.ok` false; `unit` output says if the camera at
+192.168.56.1 is unreachable). Every restart reports `tofClock`.
 
 ## Looking around
 

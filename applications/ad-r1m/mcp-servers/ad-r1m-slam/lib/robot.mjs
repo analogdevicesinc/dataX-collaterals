@@ -79,6 +79,18 @@ function driveResult(/** @type {Record<string,string>} */ s) {
   return { healthy, detail, controllers, ...(healthy ? {} : { driveLog: lines(s.drive_log), ...(s.can ? { canBus: canBus(s.can) } : {}) }) };
 }
 
+/** ToF stamps vs robot clock (drive.sh tof_clock, COMMON_FIXES.md Issue 14). */
+function clockResult(/** @type {Record<string,string>} */ s) {
+  if (s.clock === undefined) return undefined;
+  const c = kv(s.clock);
+  const robotNtp = c.robot_ntp === "yes";
+  if (!c.tof_offset_s) return { ok: null, robotNtp, detail: "no /cam1/camera_info message" };
+  const offsetS = Number(c.tof_offset_s);
+  if (Math.abs(offsetS) <= 2) return { ok: true, offsetS, robotNtp };
+  const fix = `${robotNtp ? "" : "wait for the robot's NTP sync, then "}restart target=tof, then check drives`;
+  return { ok: false, offsetS, robotNtp, detail: `ToF stamps are ${offsetS} s off the robot clock, so TF, SLAM and costmaps drop them: ${fix} (COMMON_FIXES.md Issue 14)` };
+}
+
 /** @param {{detail?: string}} a */
 export async function robotStatus({ detail } = {}) {
   const out = await run(["drive", "status"], [detail === "full" ? "full" : "status"], { timeout: 90000 });
@@ -96,6 +108,7 @@ export async function robotStatus({ detail } = {}) {
     },
     topics,
     ...(s.controllers !== undefined ? { drives: driveResult(s) } : {}),
+    tofClock: clockResult(s),
     ...(detail === "full"
       ? {
           services: kv(s.services),
@@ -204,13 +217,15 @@ export async function robotConfig(a) {
 export async function restart(a) {
   const target = a.target || "stack";
   if (!["stack", "slcan", "crsf", "imu", "tof"].includes(target)) throw new Error("target must be stack, slcan, crsf, imu or tof");
-  const out = await run(["drive", "restart"], [target], { root: target !== "stack", timeout: 240000 });
+  const out = await run(["drive", "restart"], [target], { root: true, timeout: 300000 });
   const s = sections(out);
   return {
     target,
     ...kv(s._),
     ...(s.unit !== undefined ? { unit: s.unit } : {}),
+    ...kv(s.result),
     ...(s.can !== undefined ? { canBus: canBus(s.can) } : {}),
+    tofClock: clockResult(s),
     ...(s.crsf !== undefined ? kv(s.crsf) : {}),
     ...(s.containers !== undefined ? { containers: lines(s.containers) } : {}),
     ...(s._ && target === "stack" ? { output: s._ } : {}),
@@ -298,6 +313,7 @@ export async function diagnostics(a) {
     hz: num(kv(s.hz)),
     tf: kv(s.tf),
     drives: driveResult(s),
+    tofClock: clockResult(s),
     rtabmap: s.rtabmap || "SLAM container not running",
   };
 }

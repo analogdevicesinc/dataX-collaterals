@@ -6,7 +6,8 @@ if [ "$TARGET" = nav ]; then
   rosx "$C" '
 echo "### lifecycle"
 for n in /controller_server /planner_server /behavior_server /bt_navigator; do
-  echo "$n=$(timeout -k 2 8 ros2 lifecycle get $n 2>/dev/null | head -1 || true)"
+  # grep: rmw_zenoh may print a WARN on stdout first
+  echo "$n=$(timeout -k 2 8 ros2 lifecycle get $n 2>/dev/null | grep -m1 -E "^(unconfigured|inactive|active|finalized)" || true)"
 done
 echo "### publishers"
 for t in /global_costmap/costmap /local_costmap/costmap /plan /map; do
@@ -21,7 +22,9 @@ fi
 # it running, the batch's `wait` never returned and each call leaked a process.
 rosx "$C" '
 echo "### nodes"
-ros2 node list 2>/dev/null | grep -viE "robot_state|controller|drive|ekf|imu|tof_camera|transform" | head -10
+# SLAM nodes only (tested templates and catalog packages). Nodes of the robot stack
+# (/crsf_node, /twist_mux, ...) stay out, so an empty list means no SLAM is running.
+ros2 node list 2>/dev/null | grep -iE "rtabmap|slam|mola|kiss|orb|icp|cartographer|octomap|odometry|preprocess"
 echo "### publishers"
 for t in /map /scan /cam1/point_cloud /odometry/filtered; do
   echo "$t=$(timeout -k 2 8 ros2 topic info $t 2>/dev/null | sed -n "s/Publisher count: //p")"
@@ -36,6 +39,7 @@ for p in "map odom" "odom base_link"; do
   timeout -k 2 3 ros2 run tf2_ros tf2_echo $p 2>&1 | grep -q Translation && echo "${p// /->}=ok" || echo "${p// /->}=missing"
 done'
 drive_check "$C"
+tof_clock "$C"
 
 section rtabmap
 if [ "$(ensure_slam_container)" != missing ]; then
