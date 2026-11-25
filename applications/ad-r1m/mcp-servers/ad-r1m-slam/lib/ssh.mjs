@@ -149,11 +149,11 @@ export function ssh(t, command, { timeout = 30000, connectTimeout = 10, input, s
 /** Single-quote for a POSIX shell. @param {string} s */
 export const shq = (s) => `'${String(s).replace(/'/g, "'\\''")}'`;
 
-const scriptCache = new Map();
+// Read on every call, not cached: a running server (Claude Code's or the demo app's) then
+// picks up script fixes without a restart.
 /** @param {string} name */
 function scriptText(name) {
-  if (!scriptCache.has(name)) scriptCache.set(name, fs.readFileSync(path.join(SERVER_DIR, "scripts", `${name}.sh`), "utf8"));
-  return scriptCache.get(name);
+  return fs.readFileSync(path.join(SERVER_DIR, "scripts", `${name}.sh`), "utf8");
 }
 
 /**

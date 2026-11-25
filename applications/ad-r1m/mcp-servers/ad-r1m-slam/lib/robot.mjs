@@ -351,6 +351,7 @@ export async function setupWorkspace(a) {
     ...(r.installed_via_apt ? { installedViaApt: r.installed_via_apt } : {}),
     ...(s.build !== undefined ? { built: all("built"), notBuilt: all("not_built"), buildLog: s.build.slice(-3000) } : {}),
     ...(r.rosdep_unavailable ? { rosdep: "unavailable on this image" } : {}),
+    ...(r.skipped ? { skipped: r.skipped } : {}),
   };
 }
 

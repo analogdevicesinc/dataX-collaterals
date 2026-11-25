@@ -9,11 +9,11 @@ case $(ensure_slam_container) in
   missing) echo "container=missing"; exit 0 ;;
 esac
 
-# Kill every SLAM process: SIGTERM, then SIGKILL whatever is left after 2 s. rclpy nodes catch
-# SIGTERM and can hang in shutdown; a surviving image_preprocess orphan kept publishing
-# alongside the next launch's copy.
+# Kill every ROS process in the container, whatever the package: SIGTERM, then SIGKILL after
+# 2 s. A list of names missed packages it did not know (an orphaned slam_toolbox kept
+# publishing /map next to MOLA), and rclpy nodes can hang in shutdown. Only SLAM runs here.
 KILL='
-P="ros2 launch slam_integration|rtabmap|image_preprocess|cloud_preprocess|obstacles_detection|mola|octomap_server|orb_slam"
+P="/opt/ros/[^ ]*/(lib|bin)/|/ros2_ws/install/|ros2 launch"
 pkill -f "$P" 2>/dev/null
 for i in 1 2 3 4; do pgrep -f "$P" >/dev/null || break; sleep 0.5; done
 pkill -9 -f "$P" 2>/dev/null
@@ -37,6 +37,7 @@ section() { echo "### $1"; }
 section topics
 ros2 topic list 2>/dev/null | grep -E "/scan|/odometry/filtered|/cam1|/camera1/(depth|infra1)"
 [ -f /ros2_ws/install/slam_integration/share/slam_integration/launch/launch.py ] || { echo "launch=missing"; exit 0; }
+ulimit -c 0  # RTAB-Map can abort on stop; its ~0.5 GB core dumps filled the disk via commits
 nohup ros2 launch slam_integration launch.py > /tmp/slam.log 2>&1 < /dev/null &
 sleep 4
 # The launch process is the signal: a launch that died still leaves robot nodes such as

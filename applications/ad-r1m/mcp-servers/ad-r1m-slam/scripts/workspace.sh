@@ -24,7 +24,7 @@ CUR=$(docker inspect -f '{{.Config.Image}}' "$C" 2>/dev/null) || CUR=missing
 if [ "$CUR" = "$IMAGE" ]; then ensure_slam_container >/dev/null; echo "container=reused"
 else
   [ "$CUR" != missing ] && docker rm -f "$C" >/dev/null 2>&1
-  docker run -d --name "$C" --privileged --network host -v /dev:/dev \
+  docker run -d --name "$C" --privileged --network host -v /dev:/dev --ulimit core=0 --init \
     -e RMW_IMPLEMENTATION="$RMW" -e ROS_DISTRO="$ROS_DISTRO" "$IMAGE" tail -f /dev/null >/dev/null || { echo "container=failed"; exit 0; }
   [ "$CUR" = missing ] && echo "container=created" || echo "container=recreated"
 fi
@@ -32,7 +32,7 @@ fi
 docker rmi rtab-image:latest >/dev/null 2>&1
 
 # Everything below runs inside the container.
-rosx "$C" '
+OUT=$(rosx "$C" '
 PKG=$1 REPO=$2 EXTRA=$3
 S=/ros2_ws/src/slam_integration
 mkdir -p $S/launch $S/config
@@ -70,12 +70,13 @@ rosdep_install() {
     then echo "resolved_via_apt=$k"; else echo "unresolved=$k"; fi
   done
 }
-rosdep_install $S
+# Already set up: skip apt, rosdep and the commit below (minutes, and the commit pauses SLAM).
+installed() { for p in "$@"; do ros2 pkg prefix "$p" >/dev/null 2>&1 || return 1; done; }
+if installed $PKG $EXTRA; then echo "### rosdep"; echo "skipped=already installed"; else rosdep_install $S; fi
 
 # No rosdep rule for the package: try its Debian name (orb_slam3_ros2 -> ros-humble-orb-slam3-ros2).
-pkg_installed() { ros2 pkg prefix "$PKG" >/dev/null 2>&1; }
 source /opt/ros/$ROS_DISTRO/setup.bash
-pkg_installed || {
+installed "$PKG" || {
   a="ros-$ROS_DISTRO-$(echo "$PKG" | tr "_" "-")"
   apt-cache policy "$a" 2>/dev/null | grep -q "Candidate: [0-9]" && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "$a" >/tmp/apt_pkg.log 2>&1 && echo "installed_via_apt=$a"
 }
@@ -83,7 +84,7 @@ pkg_installed || {
 # Still missing and a repo is known: clone (with submodules: SLAM repos often vendor their core
 # library as one), rosdep its dependencies and build from source.
 source /opt/ros/$ROS_DISTRO/setup.bash
-if ! pkg_installed && [ -n "$REPO" ]; then
+if ! installed "$PKG" && [ -n "$REPO" ]; then
   echo "### clone"
   D=/ros2_ws/src/$(basename "${REPO%.git}")
   if [ -d "$D/.git" ]; then
@@ -109,9 +110,12 @@ if ! pkg_installed && [ -n "$REPO" ]; then
   fi
 fi
 source /ros2_ws/install/setup.bash 2>/dev/null
+rm -f /ros2_ws/core.*  # never commit crash dumps into robot-slam
 echo "### result"
-pkg_installed && echo "package=installed" || echo "package=missing"
-' "$PKG" "$REPO" "$EXTRA"
+installed "$PKG" && echo "package=installed" || echo "package=missing"
+' "$PKG" "$REPO" "$EXTRA")
+echo "$OUT"
+case $OUT in *"skipped=already installed"*) exit 0 ;; esac
 
 # Save what was installed so the next setup (any package) starts from it, then drop the image
 # it replaced when nothing uses it any more.

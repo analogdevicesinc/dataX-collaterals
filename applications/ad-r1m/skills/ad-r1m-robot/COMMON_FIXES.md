@@ -21,6 +21,7 @@ research behind them is in RTAB_RESEARCH.md.
 - [Issue 13: RViz Drops Every Scan (frame `/cam1_scan`)](#issue-13-rviz-drops-every-scan-frame-cam1_scan)
 - [Issue 14: RViz Drops Every Scan (stale ToF clock)](#issue-14-rviz-drops-every-scan-as-earlier-than-all-the-data-in-the-transform-cache)
 - [Issue 15: Floor Mapped as Obstacles (two camera TF publishers)](#issue-15-floor-mapped-as-obstacles-tables-as-ground-two-camera-tf-publishers)
+- [Issue 16: setup_workspace Hangs, Disk Full (core dumps)](#issue-16-setup_workspace-hangs-slam_workspace-paused-disk-full)
 - [Quick Diagnostic Checklist](#quick-diagnostic-checklist)
 - [Template Quick Reference](#template-quick-reference)
 
@@ -506,6 +507,32 @@ On the camera (`ssh analog@192.168.56.1` from the robot), files are root-owned, 
 Verify: one `/tf_static` entry (roll +90, yaw +90), and in `base_link` the floor band at
 ~0-5 cm. Undo: restore the compose backup and restart `ros2-docker-app`. Upstream, the camera
 image (or ad-r1m-ros2) should not publish this transform.
+
+---
+
+## Issue 16: setup_workspace Hangs, slam_workspace Paused, Disk Full
+
+### Error
+`setup_workspace` runs for many minutes, RTAB-Map freezes, `docker ps` shows `slam_workspace`
+as `(Paused)` and `df -h /` shows 0 bytes free.
+
+### Cause
+`docker commit` pauses the container while it writes. RTAB-Map can abort when SLAM is stopped,
+and each abort left a ~0.5 GB `core.<pid>` in `/ros2_ws`; commits copied them into
+`robot-slam` until the disk filled. Deleting them in the container does not shrink the image:
+the committed layer keeps them.
+
+### Fix
+1. Kill the `docker commit` process on the robot, `docker unpause slam_workspace`, and
+   `docker exec slam_workspace rm -f /ros2_ws/core.*`.
+2. Check the image: core files under the `robot-slam` layers mean it has to be rebuilt:
+   `slam action=stop`, `docker rm -f slam_workspace`, `docker rmi <robot-slam>`,
+   `docker image prune -f`, then `setup_workspace` for each package again.
+3. Also safe to free: `sudo apt-get clean`, `sudo journalctl --vacuum-size=50M`.
+
+The MCP server now launches SLAM with `ulimit -c 0`, creates `slam_workspace` with
+`--ulimit core=0`, deletes `/ros2_ws/core.*` before every commit, and skips apt, rosdep and
+the commit when the packages are already installed.
 
 ---
 
