@@ -72,6 +72,11 @@ file. Caches (repo clones, Kuiper download state, RViz and pixi logs) are under
 SSH host keys are not recorded: a reflashed robot keeps its hostname but gets a new key, and a
 stale key makes OpenSSH refuse the password login sshpass needs.
 
+## Demo app
+
+`demo-app/` is a desktop control panel (Python/tkinter, DataX design system) that drives the robot
+through this server. See [demo-app/README.md](demo-app/README.md).
+
 ## Without the plugin
 
 ```bash
