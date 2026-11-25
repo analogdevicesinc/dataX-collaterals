@@ -10,9 +10,9 @@ auto-exposure) so a surface looks the same in every frame, which loop closure ne
 
 Camera mode 3 (config_adsd3500_adsd3100.json): AB peaks at ~7600 (ab_max 8191) and the
 camera zeroes AB below abThreshMin 3 (~12% of pixels). The scale starts at ab_min, and
-fill_invalid paints the zeroed pixels with the mean of their valid neighbours: ~47% of GFTT
-corners sat on those holes' edges. ad-r1m-18, 2026-11-25, static robot: repeatable
-real-structure features 127 -> 187, ~10 ms per frame. Loop closures while driving untested.
+fill_invalid paints the zeroed pixels with the mean of their valid neighbours: otherwise
+~47% of GFTT corners sit on those holes' edges, which flicker frame to frame. It costs
+~10 ms per frame.
 """
 import rclpy
 from rclpy.node import Node

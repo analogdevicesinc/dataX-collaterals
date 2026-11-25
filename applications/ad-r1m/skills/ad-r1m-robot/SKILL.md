@@ -41,14 +41,14 @@ Specs: [ROBOT_SPEC.md](ROBOT_SPEC.md). Research and parameter rationale:
    the shared `robot-slam` image this takes about a minute.
 3. `slam action=start` deploys the tested default template as `launch.py` and starts it:
    - `template=depth_rgb` (default): ToF depth + the AB (amplitude) image as RGB, visual
-     registration, odometry from TF. Best setup so far (ad-r1m-16 and ad-r1m-18).
+     registration, odometry from TF. The best setup.
    - `template=depth_pointcloud`: adds the ToF point cloud for ICP. Only when the user asks
      for it; it still has older parameters (see its docstring).
 4. `diagnostics target=slam`: `started` SLAM nodes, `/map` publisher, `hz` for `/scan`,
    `/cam1/point_cloud`, `/odometry/filtered`, and `tf` `map->odom=ok`.
 5. Optionally `rviz action=start` (see `ad-r1m-bringup`).
 
-`slam action=stop` stops it. The tested templates are mapping-only: on ad-r1m-18, reloading a
+`slam action=stop` stops it. The tested templates are mapping-only: reloading a
 database they wrote aborts RTAB-Map (`Memory::loadDataFromDb`, empty descriptors).
 
 To read a template before changing it (the parameter values and why are in its docstring):
@@ -121,8 +121,8 @@ docker compose --env-file ad-r1m.env run --rm teleop_keyboard
    (`max_vel` 0.5 m/s, `max_rot` 1.0 rad/s by default).
 
 A teleop on the PC (`pixi run ros2 run teleop_twist_keyboard teleop_twist_keyboard`) only
-publishes `/cmd_vel` and cannot reset the kill switch, so it does nothing on its own (ad-r1m-18,
-2026-11-25). The RC transmitter (`crsf_node`) also works. Remind the user the robot will move,
+publishes `/cmd_vel` and cannot reset the kill switch, so it does nothing on its own.
+The RC transmitter (`crsf_node`) also works. Remind the user the robot will move,
 and suggest driving only when they ask; it drives during mapping too.
 
 ## Wheel drives

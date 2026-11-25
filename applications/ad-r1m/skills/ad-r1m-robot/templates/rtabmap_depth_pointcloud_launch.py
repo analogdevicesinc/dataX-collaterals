@@ -12,11 +12,8 @@ Inputs: raw /cam1/depth_image + AB image as RGB + /cam1/point_cloud (voxel-filte
 cloud_preprocess.py, same optical frame), EKF odometry. Visual + ICP registration;
 occupancy grid from depth. Icp/PointToPlaneRadius must stay 0 while PointToPlaneK is set.
 
-Tested on AD-R1M (ad-r1m-16, RTAB-Map 0.23.13, 2026-11-10).
-2026-11-18: AB log-scaled to mono8 as in rtabmap_depth_rgb_launch.py (mono16 AB median is
-~69/65535, so RTAB-Map's /256 conversion gave a near-black image).
-2026-11-18: occupancy-grid floor params (height-based ground segmentation, no flat
-obstacles, Grid/RangeMax 2.0) copied from rtabmap_depth_rgb_launch.py.
+AB is log-scaled to mono8 and the occupancy-grid floor params (height-based ground
+segmentation, no flat obstacles, Grid/RangeMax 2.0) match rtabmap_depth_rgb_launch.py.
 The ToF camera is mounted inverted and the TF base_link -> cam1_adtf31xx_optical
 already models it: feed the images/cloud as published, do NOT flip or rotate them
 (doing so inverts the scene in 3D and the floor gets mapped as obstacles).
@@ -94,8 +91,8 @@ def generate_launch_description():
             # Ground/Obstacle Segmentation (tuned for ToF camera)
             # Floor params as in rtabmap_depth_rgb_launch.py. Height threshold instead of
             # normals: ToF floor depth is noisy at grazing angles, so floor normals fail
-            # MaxGroundAngle and the floor gets mapped as obstacles (seen on ad-r1m-18,
-            # 2026-11-18). Flat floors only: ramps > MaxGroundHeight become obstacles.
+            # MaxGroundAngle and the floor gets mapped as obstacles. Flat floors only: ramps >
+            # MaxGroundHeight become obstacles.
             'Grid/NormalsSegmentation': 'false',
             'Grid/MaxGroundAngle': '30',     # Max slope for ground (degrees, normals mode only)
             'Grid/MaxGroundHeight': '0.08',  # Max ground height relative to base_link (m)
@@ -105,9 +102,9 @@ def generate_launch_description():
             'Grid/NoiseFilteringRadius': '0.1',
             'Grid/NoiseFilteringMinNeighbors': '3',
             'Grid/FlatObstacleDetected': 'false',  # floor patches offset by ToF bias were obstacles
-            'Grid/RangeMin': '0.3',          # tested value; ToF spec range is 0.4-4.0 m
-            # At 3 m the far floor crossed MaxGroundHeight and was mapped as obstacles (ad-r1m-18,
-            # 2026-11-18): a 1.5 deg camera tilt lifts it 7.8 cm at 3 m but 5 cm at 2 m.
+            'Grid/RangeMin': '0.3',          # ToF spec range is 0.4-4.0 m
+            # At 3 m the far floor crosses MaxGroundHeight and is mapped as obstacles: a 1.5 deg
+            # camera tilt lifts it 7.8 cm at 3 m but 5 cm at 2 m.
             'Grid/RangeMax': '2.0',          # sensor max 4.0; Icp/RangeMax stays 4.0
             'Grid/DepthDecimation': '2',     # Downsample for performance
 

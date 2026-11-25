@@ -11,20 +11,17 @@ Research-backed parameters from:
 Inputs: raw /cam1/depth_image + AB image as RGB (/cam1/ab_processed), EKF odometry.
 Visual registration only; occupancy grid from depth.
 
-Tested on AD-R1M (ad-r1m-16, RTAB-Map 0.23.13, 2026-11-10).
-2026-11-18 (ad-r1m-18, RTAB-Map 0.23.14, robot-slam image): best setup so far. Grid/RangeMax
-3.0 -> 2.0 removed false far-floor obstacles; ~30-40 ms per update at 2 Hz, ~13% CPU; ran
-with Nav2 (navigation_launch.py only, no AMCL) using RTAB-Map's /map and map -> odom TF.
-2026-11-17 (ad-r1m-18): AB now log-scaled to mono8 (the mono16 AB median is ~69/65535,
-so RTAB-Map's /256 conversion gave a near-black image and every loop closure was rejected
-with 0 inliers); feature type set to GFTT/ORB for both Vis and Kp (6 = GFTT/BRIEF needs
-xfeatures2d, which this OpenCV lacks); full-resolution features (RTAB-Map step was ~20 ms
-of the 700 ms budget at decimation 2). Pre and post decimation must be equal: post=2 with
-pre=1 stores 256x256 AB next to 512x512 depth and RTAB-Map drops Vis/DepthAsMask.
+On the RPi 5: ~30-40 ms per update at 2 Hz, ~13% CPU. Works with Nav2 (navigation_launch.py
+only, no AMCL) using RTAB-Map's /map and map -> odom TF.
+AB is log-scaled to mono8: RTAB-Map's /256 conversion of the mono16 AB gives a near-black
+image and every loop closure is rejected with 0 inliers. Feature type is GFTT/ORB for both
+Vis and Kp (6 = GFTT/BRIEF needs xfeatures2d, which this OpenCV lacks), at full resolution.
+Pre and post decimation must be equal: post=2 with pre=1 stores 256x256 AB next to 512x512
+depth and RTAB-Map drops Vis/DepthAsMask.
 Odometry is read from TF (odom -> base_link, published by the EKF) with explicit variances,
 not from /odometry/filtered: the EKF fuses diff_drive_controller/odom, which reports zero
-covariance, so the EKF claims ~1e-9 m^2 pose variance. RTAB-Map then judged a correct
-loop closure (41 deg yaw drift after a fast run) as a 12x outlier and rejected it.
+covariance, so the EKF claims ~1e-9 m^2 pose variance and RTAB-Map rejects correct loop
+closures as outliers.
 The ToF camera is mounted inverted and the TF base_link -> cam1_adtf31xx_optical
 already models it: feed the images/cloud as published, do NOT flip or rotate them
 (doing so inverts the scene in 3D and the floor gets mapped as obstacles).
@@ -86,9 +83,8 @@ def generate_launch_description():
 
             # Ground/Obstacle Segmentation (tuned for ToF camera)
             # Height threshold instead of normals: ToF floor depth is noisy at grazing angles,
-            # so floor normals fail MaxGroundAngle and the floor gets mapped as obstacles
-            # (seen on ad-r1m-18, 2026-11-18). Flat floors only: ramps > MaxGroundHeight
-            # become obstacles.
+            # so floor normals fail MaxGroundAngle and the floor gets mapped as obstacles.
+            # Flat floors only: ramps > MaxGroundHeight become obstacles.
             'Grid/NormalsSegmentation': 'false',
             'Grid/MaxGroundAngle': '30',     # Max slope for ground (degrees, normals mode only)
             'Grid/MaxGroundHeight': '0.08',  # Max ground height relative to base_link (m)
@@ -98,9 +94,9 @@ def generate_launch_description():
             'Grid/NoiseFilteringRadius': '0.1',
             'Grid/NoiseFilteringMinNeighbors': '3',
             'Grid/FlatObstacleDetected': 'false',  # floor patches offset by ToF bias were obstacles
-            'Grid/RangeMin': '0.3',          # tested value; ToF spec range is 0.4-4.0 m
-            # At 3 m the far floor crossed MaxGroundHeight and was mapped as obstacles (ad-r1m-18,
-            # 2026-11-18): a 1.5 deg camera tilt lifts it 7.8 cm at 3 m but 5 cm at 2 m.
+            'Grid/RangeMin': '0.3',          # ToF spec range is 0.4-4.0 m
+            # At 3 m the far floor crosses MaxGroundHeight and is mapped as obstacles: a 1.5 deg
+            # camera tilt lifts it 7.8 cm at 3 m but 5 cm at 2 m.
             'Grid/RangeMax': '2.0',          # sensor max 4.0
             'Grid/DepthDecimation': '2',     # Downsample for performance
 

@@ -3,12 +3,12 @@
 Nav2 obstacle cloud for the AD-R1M ToF camera.
 
 The raw /cam1/point_cloud is organized 512x512 (~262k points, ~4 MB at 10 Hz). Fed to
-Nav2 directly, the costmaps transform and raytrace every point: on ad-r1m-18
-(2026-11-18) load went to ~16 on 4 cores and the local costmap fell to ~1.4 Hz.
+Nav2 directly, the costmaps transform and raytrace every point: load goes to ~16 on the
+RPi 5's 4 cores and the local costmap falls to ~1.4 Hz.
 A voxel filter (cloud_preprocess.py) costs ~0.5-0.9 core in numpy (np.unique over
 ~200k points). This node instead strides the organized grid (stride 4 -> 128x128),
-throttles to `rate` Hz and range-limits - no sort. Measured ~25% of one core on
-ad-r1m-18, mostly rclpy receiving the 4 MB messages (the throttle drops them after that).
+throttles to `rate` Hz and range-limits - no sort. That costs ~25% of one core, mostly
+rclpy receiving the 4 MB messages (the throttle drops them after that).
 
 Header (optical frame, stamp) is preserved; no rotation, the optical frame TF already
 models the inverted mount. Floor removal is left to Nav2 (min_obstacle_height in

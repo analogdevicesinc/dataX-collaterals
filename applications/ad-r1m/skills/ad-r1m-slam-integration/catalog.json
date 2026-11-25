@@ -9,7 +9,7 @@
       "repo": "https://github.com/introlab/rtabmap_ros",
       "apt": "rtabmap-ros",
       "rosPackage": "rtabmap_slam",
-      "fieldNotes": "Runs on ad-r1m-16/18 as ToF depth + AB image as RGB (skills/ad-r1m-robot/templates/rtabmap_depth_rgb_launch.py, tested 2026-11-10/17). Best setup on ad-r1m-18 (2026-11-18): Grid/RangeMax 2.0 removed false far-floor obstacles (3.0 let a small camera tilt lift the floor above Grid/MaxGroundHeight 0.08); ~30-40 ms per update at 2 Hz, ~13% CPU; works with Nav2 navigation_launch.py using RTAB-Map's /map.",
+      "fieldNotes": "Runs on AD-R1M as ToF depth + AB image as RGB (skills/ad-r1m-robot/templates/rtabmap_depth_rgb_launch.py), the best setup: Grid/RangeMax 2.0 removes false far-floor obstacles (3.0 lets a small camera tilt lift the floor above Grid/MaxGroundHeight 0.08); ~30-40 ms per update at 2 Hz, ~13% CPU; works with Nav2 navigation_launch.py using RTAB-Map's /map.",
       "notes": "Visual, visual-inertial, ICP and RGB-D SLAM; RGB-D, stereo, depth cameras and LiDAR. CPU-only. ROS 2 Humble/Iron/Rolling. Nav2 integration (occupancy grid). Runs on ARM. Most versatile for depth/ToF cameras."
     },
     "orb_slam3_ros2": {
@@ -49,7 +49,7 @@
       "repo": "https://github.com/MOLAorg/mola_lidar_odometry",
       "apt": "mola-lidar-odometry",
       "rosPackage": "mola_lidar_odometry",
-      "fieldNotes": "Runs on ad-r1m-18 (2026-11-18) with the ToF /cam1/point_cloud as its 3D 'LiDAR' input and /imu (skills/ad-r1m-robot/templates/mola_icp_launch.py): /lidar_odometry/pose at 9.9 Hz, pose_quality 1.0, map->odom TF, mola-cli ~1 CPU core; octomap_server adds a 2D /map. Sensor topics are subscribed by the separate mola_bridge_ros2 module, so messageTypesInCode is empty for this repo. Narrow ~70 deg FOV: expect drift and roll/pitch error in open spaces.",
+      "fieldNotes": "Runs on AD-R1M with the ToF /cam1/point_cloud as its 3D 'LiDAR' input and /imu (skills/ad-r1m-robot/templates/mola_icp_launch.py): /lidar_odometry/pose at 9.9 Hz, pose_quality 1.0, map->odom TF, mola-cli ~1 CPU core; octomap_server adds a 2D /map. Sensor topics are subscribed by the separate mola_bridge_ros2 module, so messageTypesInCode is empty for this repo. Narrow ~70 deg FOV: expect drift and roll/pitch error in open spaces.",
       "notes": "LiDAR (2D/3D) odometry, optional IMU (LO and LIO modes), front-end for MOLA SLAM. CPU-only. ROS 2 Humble/Jazzy/Rolling. Moderate-heavy compute. GPL-3.0."
     },
     "gs_icp_slam": {

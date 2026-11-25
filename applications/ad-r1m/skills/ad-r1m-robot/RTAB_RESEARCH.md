@@ -94,8 +94,8 @@ so it claims ~1e-9 m² pose variance and RTAB-Map rejected a correct loop closur
 
 **Solution:** proximity detection as a backup to appearance-based loop closure
 (`RGBD/ProximityBySpace`, `RGBD/NeighborLinkRefining`, `RGBD/LoopClosureReextractFeatures`, all
-`true` in the template). Keep `RGBD/OptimizeMaxError` at the RTAB-Map default 3.0: 1.0 rejected
-valid loops on ad-r1m-18. Wider coverage: the point cloud assembler (COMMON_FIXES.md Issue 7).
+`true` in the template). Keep `RGBD/OptimizeMaxError` at the RTAB-Map default 3.0: 1.0 rejects
+valid loops. Wider coverage: the point cloud assembler (COMMON_FIXES.md Issue 7).
 
 ### ICP Corridor Handling
 
@@ -110,7 +110,7 @@ valid loops on ad-r1m-18. Wider coverage: the point cloud assembler (COMMON_FIXE
 
 The AB (amplitude) image is ~13-bit (saturates ~8190) with a median around 70. RTAB-Map's
 mono16 -> mono8 conversion divides by 256, leaving a near-black image (median 0, max ~31):
-measured on ad-r1m-18 (2026-11-17), every loop closure was rejected with 0 inliers. Feed AB
+every loop closure is then rejected with 0 inliers. Feed AB
 as log-scaled mono8 (`image_preprocess.py`, `target_encoding: mono8`, `ab_max: 8191`) with
 a fixed mapping, not per-frame normalization, so appearance stays consistent across frames.
 

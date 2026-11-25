@@ -13,7 +13,7 @@ localization) and its 2D projection is published as /map.
 
 Obstacle heights are filtered relative to the robot (base_footprint, at floor level), not
 in the map frame: MOLA estimates 6 DoF and its map frame picks up roll/pitch and z drift
-from the narrow ToF view (measured on ad-r1m-18: ~10 deg tilt, floor at z=-0.18 in map),
+from the narrow ToF view (~10 deg tilt, floor at z=-0.18 in map),
 so a z band in map slices through the floor. With filter_ground_plane, octomap_server
 applies point_cloud_min/max_z and a RANSAC ground fit in base_frame_id before inserting.
 The cloud itself needs no rotation: optical y maps to base_link +z.

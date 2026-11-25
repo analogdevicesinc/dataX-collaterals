@@ -165,7 +165,7 @@ of view of the front facing RGB-D camera was also a problem during navigation."
 ### Fix 1: Proximity detection
 The template already sets `RGBD/ProximityBySpace: true`, `RGBD/NeighborLinkRefining: true`
 and `RGBD/LoopClosureReextractFeatures: true`. Keep `RGBD/OptimizeMaxError` at 3.0 (the
-RTAB-Map default): 1.0 rejected valid loops on ad-r1m-18. If closures are rejected with 0
+RTAB-Map default): 1.0 rejects valid loops. If closures are rejected with 0
 inliers, check the AB image is not black (Issue 1).
 
 ### Fix 2: Point cloud assembler
@@ -198,7 +198,7 @@ fixes (feature type, decimation, odometry from TF), so re-test it.
 CPU maxed out, SLAM slow.
 
 Kunchala et al. (2026), on an RPi 4B: RTAB-Map 65-80% CPU, GMapping 40-50%, Cartographer
-50-70%. On the RPi 5 with the template: ~13% CPU at 2 Hz (ad-r1m-18).
+50-70%. On the RPi 5 with the template: ~13% CPU at 2 Hz.
 
 ### Fix
 Levers, in order (`slam_set_params` to try at runtime):
@@ -318,8 +318,7 @@ ever logs `Driver booted and ready`.
 Every restart follows the same order: stop `ad-r1m-bringup`, `docker compose --env-file
 ad-r1m.env down` in the active config folder (fresh containers, nothing reused), the hardware
 `systemctl restart` if any, then `systemctl start ad-r1m-bringup`. Never `compose stop` +
-`start`: on ad-r1m-18 (2026-11-25) it left `drive_left` failing its boot three times in a row,
-while `down`, `systemctl restart ad-r1m-slcan`, bringup start booted both drives. Without
+`start`: it reuses the containers and can leave a drive failing its boot every time. Without
 `--env-file ad-r1m.env`, compose fails (`DOCKER_IMAGE` unset) and nothing is taken down.
 
 1. `restart target=stack`: the sequence above with no hardware reset. Re-runs the drive boot.
@@ -333,15 +332,14 @@ while `down`, `systemctl restart ad-r1m-slcan`, bringup start booted both drives
    A second failure mode looks the same from outside (spawners loop, no `/joint_states`
    publisher) but `ros2_control_node` stays alive: `drive_left` logs `Driver booted and
    ready`, `drive_right` logs its scale settings and then nothing, and `controller_manager`
-   never serves its services. Run the same restart again; on ad-r1m-18 the next
-   `restart target=slcan` booted both drives.
+   never serves its services. Run `restart target=slcan` again.
 3. Read the node list (`canBus`): `drive_right` 0x14 (heartbeat `0x714`), `drive_left` 0x16
    (`0x716`), `05` = OPERATIONAL.
    - **A drive with no heartbeat is a hardware fault** that no restart clears. The log shows
      `[drive_left]: Boot failed after 3 attempts`, then `ros2_control_node` dies with
      `ros2_canopen::DriverException`. Check its power connector/fuse, the e-stop and its CAN
-     cable. Seen on ad-r1m-18 with `drive_left` unpowered: 0x714 and node 2 (0x702)
-     answered, 0x716 never did.
+     cable. With `drive_left` unpowered, 0x714 and node 2 (0x702) answer and 0x716 never
+     does.
    - **A node at 0x17**: an ADRD3161 on its factory DIP setting. Node ID = 0x10 + DIP switch S2
      (bits 1-2-3, switch 1 = MSB, read at boot only; no LSS, no software override). Set 110 for
      left (0x16), 100 for right (0x14), then power-cycle.
@@ -431,25 +429,25 @@ Message Filter dropping message: frame 'cam1_scan' at time <T> for reason 'the t
 ```
 
 `/scan` itself publishes at 10 Hz with the right frame; its `header.stamp.sec` is far behind
-`date +%s` on the robot (ad-r1m-18, 2026-11-25, after a power cycle: ~700 s). `robot_status`,
-`diagnostics target=slam` and every `restart` report it as `tofClock` (`ok: false`,
-`offsetS`), measured from one `/cam1/camera_info` header against the robot clock.
+`date +%s` on the robot (~700 s after a power cycle). `robot_status`, `diagnostics
+target=slam` and every `restart` report it as `tofClock` (`ok: false`, `offsetS`): one
+`/cam1/camera_info` header stamp against the robot clock.
 
 ### Cause
-Seen on ad-r1m-18 (2026-11-25) after a power cycle, from the robot and camera journals:
+After a power cycle:
 
 1. `ad-r1m-tof.service` (`/usr/lib/ad-r1m/tof.sh`) runs at ~5 s, before the camera answers
    ping, prints `Couldn't reach ToF camera` and does not retry.
 2. The Pi has no RTC: its chronyd steps the clock by ~700 s from internet NTP at ~14 s.
-3. The camera's chrony (`server 192.168.56.10`, `makestep 1 -1`) first synced to the wrong
-   pre-step time, then reported `no selectable sources` after the Pi's jump and only stepped
-   to the right time ~5 min later.
-4. The camera's ROS node (`ros2-docker-app.service`) kept the old time base: scans stayed
-   ~700 s behind even after the camera's system clock was correct, until the node restarted.
+3. The camera's chrony (`server 192.168.56.10`, `makestep 1 -1`) first syncs to the wrong
+   pre-step time, reports `no selectable sources` after the Pi's jump and only steps to the
+   right time ~5 min later.
+4. The camera's ROS node (`ros2-docker-app.service`) keeps the old time base: scans stay
+   ~700 s behind even once the camera's system clock is correct, until the node restarts.
 
-`tof.sh` would fix it (makestep + node restart), but it runs too early. A second bug: root
-had no host key for 192.168.56.1, so later runs failed with "Host key verification failed"
-(the script prints `Couldn't reach ToF camera` for that too, even though its ping succeeded).
+`tof.sh` would fix it (makestep + node restart), but it runs too early. It also fails with
+"Host key verification failed" when root has no host key for 192.168.56.1 (the script
+prints `Couldn't reach ToF camera` for that too, even though its ping succeeds).
 
 ### Fix
 1. Check: `sudo ssh -o BatchMode=yes analog@192.168.56.1 true` → `Host key verification failed`.
@@ -487,12 +485,12 @@ Two nodes publish the same static transform `cam1_adtf31xx -> cam1_adtf31xx_opti
 
 Both are latched; every listener keeps whichever reached it last, which depends on start
 order. Camera node or stack restarts can flip the result, so the same code maps correctly
-one day and upside down the next (ad-r1m-18: correct 2026-11-18, wrong 2026-11-25).
+one day and upside down the next.
 
 Check: list the `/tf_static` entries for child `cam1_adtf31xx_optical` (subscribe with
 transient_local QoS). Two entries = this issue.
 
-### Fix (applied on ad-r1m-18, 2026-11-25)
+### Fix
 On the camera (`ssh analog@192.168.56.1` from the robot), files are root-owned, so use sudo:
 1. Back up `/home/analog/docker-compose.yml` (`docker-compose.yml.bak-tf`).
 2. `docker cp ros_app:/opt/ros/adi_ros2/share/adi_3dtof_adtf31xx/launch/adi_3dtof_adtf31xx_launch.py`
