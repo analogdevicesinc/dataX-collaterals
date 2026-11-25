@@ -78,7 +78,6 @@ Create the folder first. If `~/.claude/skills` does not exist, `scp -r` copies t
 ```bash
 ls ~/.claude/skills/t1l-bringup          # SKILL.md  reference.md  t1l.sh
 ```
-`defaults` prints JSON with the standard IPs and the repo URL. It changes nothing.
 
 ## 4. Start
 ```bash
@@ -132,7 +131,7 @@ TCP port `10000`. If you answer "no" at C3, the agent asks for each value that d
 | Network backups | `~/.local/state/setup-t1l/backup-*` |
 | Persistent renames | `/etc/systemd/network/10-t1l_*.link` |
 
-## 7. Run it again, or undo it
+## 7. Run it again
 - **Rerun:** type `/t1l-bringup` again. The agent detects the existing `t1l_*` interfaces and asks only C1. It skips the steps that are already done, and it reuses a running server and GUI.
 - **Status:** `/t1l-bringup status`.
 
