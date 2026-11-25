@@ -1,0 +1,8 @@
+# Required by the control panel (RPI_T1LPSE). See README.md.
+#
+# Everything else the app needs is in the Python standard library, including
+# tkinter -- though some distributions package that separately
+# (Debian/Ubuntu: apt install python3-tk).
+
+matplotlib>=3.5
+Pillow>=9.0
