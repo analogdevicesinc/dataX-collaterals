@@ -26,6 +26,6 @@ Whether you are attending a DataX workshop, preparing a demonstration, evaluatin
 
 ## About DataX
 
-DataX provides a common software layer for connecting data sources, processing components, and applications. It enables applications to discover, access, and exchange data through consistent interfaces, helping reduce the amount of application-specific integration required when building systems around heterogeneous devices and software components.
+The ADI DataX technology stack is a highly adaptable and open that bridges the gap between signal chains and applications. It connects applications to the physical world through industry-standard APIs, enabling portability across processing platforms and operating systems and easier integration into the customer’s ecosystem of choice.
 
 The examples in this repository focus on putting these concepts into practice. Each workshop or demo illustrates a particular DataX workflow, integration pattern, or application scenario that users can reproduce, modify, and extend.
