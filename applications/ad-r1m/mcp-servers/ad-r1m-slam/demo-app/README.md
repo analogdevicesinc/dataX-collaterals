@@ -42,7 +42,7 @@ Robot calls run one at a time, in order; the buttons are disabled while one is r
 ## Requirements
 
 - **Python 3.8+** with `tkinter`, and **Pillow** (`pip3 install -r requirements.txt`).
-- **Node.js 18+** and the MCP server's dependencies: `cd plugins/datax && npm ci`.
+- **Node.js 18+** and the MCP server's dependencies: `cd applications/ad-r1m && npm ci`.
 - **`sshpass`**, and the robot on the same network. For a new robot, use the `ad-r1m-bringup`
   skill in Claude Code first.
 - **`claude`** (Claude Code CLI, logged in) for *Evaluate* and *Ask Claude*. It runs with

@@ -205,7 +205,7 @@ def kilo(n):
 
 
 def read(*path):
-    """A file of the datax skills (plugins/datax/skills)."""
+    """A file of the plugin's skills (skills/)."""
     with open(os.path.join(SKILLS, *path)) as f:
         return f.read()
 

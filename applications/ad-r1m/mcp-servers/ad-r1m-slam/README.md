@@ -3,7 +3,7 @@
 Lets Claude connect to, provision, check and run SLAM / Nav2 on an
 [AD-R1M](https://github.com/analogdevicesinc/ad-r1m-ros2) robot over SSH. How to use the
 tools is in the skills: `ad-r1m-bringup`, `ad-r1m-robot` and `ad-r1m-slam-integration`
-(`plugins/datax/skills/`).
+(`skills/` in this plugin).
 
 ## Layout
 
@@ -29,7 +29,7 @@ The templates the tools deploy (RTAB-Map, Nav2 point cloud, RViz layout) are in
 ## Install
 
 Installing the `datax` plugin starts this server. Claude Code installs its one dependency
-(`@modelcontextprotocol/sdk`, from `plugins/datax/package.json` and `package-lock.json`)
+(`@modelcontextprotocol/sdk`, from the plugin's `package.json` and `package-lock.json`)
 into the installed plugin copy. On the PC it needs:
 
 - Node.js 18+
@@ -43,7 +43,7 @@ When developing from a local checkout (a directory marketplace runs the plugin f
 source folder), install the dependency once:
 
 ```bash
-cd plugins/datax && npm ci
+cd applications/ad-r1m && npm ci
 ```
 
 There is no build step. After editing, restart Claude Code (`/reload-plugins` does not always
@@ -80,8 +80,8 @@ through this server. See [demo-app/README.md](demo-app/README.md).
 ## Without the plugin
 
 ```bash
-cd plugins/datax && npm ci
-claude mcp add ad-r1m-slam -- node /path/to/plugins/datax/mcp-servers/ad-r1m-slam/server.mjs
+cd applications/ad-r1m && npm ci
+claude mcp add ad-r1m-slam -- node /path/to/applications/ad-r1m/mcp-servers/ad-r1m-slam/server.mjs
 ```
 
 ## License

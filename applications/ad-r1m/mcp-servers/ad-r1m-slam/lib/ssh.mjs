@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const SERVER_DIR = path.dirname(HERE);
-/** plugins/datax/skills */
+/** The plugin's skills/ */
 export const SKILLS_DIR = path.join(SERVER_DIR, "..", "..", "skills");
 export const TEMPLATES_DIR = process.env.SLAM_TEMPLATES_DIR || path.join(SKILLS_DIR, "ad-r1m-robot", "templates");
 
