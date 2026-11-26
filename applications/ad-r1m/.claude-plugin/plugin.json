@@ -1,0 +1,9 @@
+{
+  "name": "datax",
+  "description": "ADI DataX skills and MCP server for the AD-R1M robot: bringup, SLAM, Nav2 and SLAM package integration",
+  "version": "0.7.0",
+  "author": {
+    "name": "Analog Devices"
+  },
+  "license": "Apache-2.0"
+}

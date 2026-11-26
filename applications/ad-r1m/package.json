@@ -1,0 +1,12 @@
+{
+  "name": "@adi/datax-plugin",
+  "version": "0.7.0",
+  "private": true,
+  "description": "Runtime dependencies of the datax plugin's MCP servers (installed by Claude Code with the plugin)",
+  "type": "module",
+  "license": "Apache-2.0",
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.2"
+  }
+}
