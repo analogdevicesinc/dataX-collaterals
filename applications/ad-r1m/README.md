@@ -26,18 +26,18 @@ shows the plan for you to confirm.
 On your PC:
 
 - [Claude Code](https://claude.com/claude-code)
-- Node.js 18+
-- `sshpass` (e.g. `sudo apt install sshpass`)
+- Node.js 18+ (Linux, macOS or Windows; no SSH client needed, the server logs in with `ssh2`)
 - The robot on the same network (Ethernet for a freshly flashed card, Wi-Fi once configured)
 - For RViz: pixi, or native ROS 2 Humble with `rmw_zenoh_cpp`
-- For SD card flashing: Linux with passwordless `sudo` for `dd`
+- For SD card flashing: Linux with passwordless `sudo` for `dd`. On Windows and macOS the server
+  downloads the image and you write it with Raspberry Pi Imager or balenaEtcher
 
 ## Install
 
 ```bash
 git clone https://github.com/analogdevicesinc/dataX-collaterals.git
 cd dataX-collaterals/applications/ad-r1m
-npm ci                                    # the MCP server's one dependency
+npm ci                                    # the MCP server's dependencies
 claude plugin marketplace add ./
 claude plugin install datax@datax-ad-r1m
 ```

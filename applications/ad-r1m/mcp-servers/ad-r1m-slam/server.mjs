@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @ts-check
 // AD-R1M robot MCP server: connect, provision, check and run SLAM / Nav2 on an AD-R1M over
-// SSH (sshpass). Robot-side work is in scripts/*.sh; how to use the tools is in the skills
+// SSH (ssh2, no ssh client needed on the PC). Robot-side work is in scripts/*.sh; how to use the tools is in the skills
 // (skills/ad-r1m-* in this plugin).
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";

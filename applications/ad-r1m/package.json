@@ -5,8 +5,11 @@
   "description": "Runtime dependencies of the datax plugin's MCP servers (installed by Claude Code with the plugin)",
   "type": "module",
   "license": "Apache-2.0",
-  "engines": { "node": ">=18" },
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.32.2"
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "ssh2": "1.17.0"
   }
 }

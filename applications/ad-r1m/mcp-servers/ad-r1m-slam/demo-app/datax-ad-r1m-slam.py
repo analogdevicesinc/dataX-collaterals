@@ -12,6 +12,7 @@ import argparse
 import json
 import os
 import queue
+import shutil
 import subprocess
 import threading
 import time
@@ -67,7 +68,7 @@ class Mcp:
 
     def __init__(self, server):
         self.proc = subprocess.Popen(["node", server], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                     stderr=subprocess.DEVNULL, text=True)
+                                     stderr=subprocess.DEVNULL, text=True, encoding="utf-8")
         self.n = 0
         self._rpc("initialize", {"protocolVersion": "2024-11-05", "capabilities": {},
                                  "clientInfo": {"name": "datax-ad-r1m-slam", "version": "1.0"}})
@@ -189,8 +190,9 @@ def ask_claude(prompt, demo=False):
                 if prompt.startswith("Write a ROS 2") else
                 "Demo: no fault found. Robot ready, drives healthy, ToF clock in sync.")
         return text, {"input": len(prompt) // 4, "cache_write": 0, "cache_read": 19800, "output": 380, "cost": 0.04}
-    r = subprocess.run(["claude", "-p", "--output-format", "json"], input=prompt,
-                       capture_output=True, text=True, timeout=900)
+    # shutil.which finds claude.cmd / claude.exe on Windows, which a bare "claude" does not.
+    r = subprocess.run([shutil.which("claude") or "claude", "-p", "--output-format", "json"], input=prompt,
+                       capture_output=True, text=True, encoding="utf-8", timeout=900)
     if r.returncode:
         raise RuntimeError(r.stderr.strip() or r.stdout.strip() or "claude failed")
     d = json.loads(r.stdout)
@@ -206,7 +208,7 @@ def kilo(n):
 
 def read(*path):
     """A file of the plugin's skills (skills/)."""
-    with open(os.path.join(SKILLS, *path)) as f:
+    with open(os.path.join(SKILLS, *path), encoding="utf-8") as f:
         return f.read()
 
 

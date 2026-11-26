@@ -1,0 +1,2 @@
+# Scripts and templates are sent to the robot (Linux) as-is: keep LF on Windows checkouts.
+* text=auto eol=lf

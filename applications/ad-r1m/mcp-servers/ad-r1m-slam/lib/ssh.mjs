@@ -1,12 +1,14 @@
 // @ts-check
-// SSH to the robot: selected-robot config, sshpass, failure classification and the runner
-// for scripts/*.sh. Every script runs on the robot host (ROS work goes through rosx in
+// SSH to the robot: selected-robot config, the ssh2 client, failure classification and the
+// runner for scripts/*.sh. Every script runs on the robot host (ROS work goes through rosx in
 // scripts/lib.sh); arguments are passed as "$@" and secrets on stdin.
-import { spawn } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import ssh2 from "ssh2";
+
+const { Client } = ssh2;
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const SERVER_DIR = path.dirname(HERE);
@@ -82,67 +84,78 @@ export function selectedTarget() {
   return { host: config.host, user: config.user, password: config.password };
 }
 
-/**
- * sshpass exits 5 on a rejected password; ssh exits 255 on connection errors.
- * @param {string} host @param {number|null} status @param {string} stderr @param {any} [spawnError]
- */
-function classify(host, status, stderr, spawnError) {
-  if (spawnError?.code === "ENOENT") return new SshError("sshpass_missing", host, "sshpass is not installed on this PC (e.g. `sudo apt install sshpass`).");
-  if (status === 5 || /Permission denied/i.test(stderr)) {
+/** A connection-level ssh2 error as an SshError. @param {string} host @param {any} e */
+function classify(host, e) {
+  if (e?.level === "client-authentication") {
     return new SshError("auth_failed", host, "Wrong username or password. Ask the user for the SSH password (and user, default analog) and call connect_robot.");
   }
-  if (status !== 255) return null;
-  if (/Could not resolve hostname|Name or service not known|nodename nor servname|Temporary failure in name resolution/i.test(stderr)) {
+  if (["ENOTFOUND", "EAI_AGAIN", "EAI_NONAME", "EAI_NODATA"].includes(e?.code)) {
     return new SshError("dns_unresolved", host, `Hostname does not resolve - the name may be wrong or mDNS (.local) may not work on this network. ${NO_ROBOT_HINT}`);
   }
-  if (/Connection refused/i.test(stderr)) return new SshError("ssh_refused", host, "Host is up but SSH is refused - it may still be booting (~60 s).");
+  if (e?.code === "ECONNREFUSED") return new SshError("ssh_refused", host, "Host is up but SSH is refused - it may still be booting (~60 s).");
   return new SshError(
     "unreachable",
     host,
-    `${stderr.trim() || "No response"}. Check the robot is powered on (LED ring solid green) and on the same network or Ethernet. ${NO_ROBOT_HINT}`
+    `${e?.message || "No response"}. Check the robot is powered on (LED ring solid green) and on the same network or Ethernet. ${NO_ROBOT_HINT}`
   );
 }
 
 /**
- * Host keys are not recorded: a reflashed robot keeps its hostname but gets a new key, and a
- * stale recorded key makes OpenSSH disable password auth even under StrictHostKeyChecking=no,
- * which breaks sshpass.
+ * Run one command on the robot with password login, in-process (ssh2), so no ssh/sshpass is
+ * needed on the PC (Windows has no sshpass). Host keys are not checked or recorded: a
+ * reflashed robot keeps its hostname but gets a new key.
+ * stdout: a file descriptor to stream the command's stdout to instead of returning it.
  * @param {Target} t @param {string} command
  * @param {{timeout?: number, connectTimeout?: number, input?: string, stdout?: number}} [o]
  * @returns {Promise<string>}
  */
 export function ssh(t, command, { timeout = 30000, connectTimeout = 10, input, stdout } = {}) {
-  const args = [
-    "-e", "ssh",
-    "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null", "-o", "LogLevel=ERROR",
-    "-o", `ConnectTimeout=${connectTimeout}`,
-    "-o", "PreferredAuthentications=password,keyboard-interactive", "-o", "NumberOfPasswordPrompts=1",
-    "--", `${t.user}@${t.host}`, command,
-  ];
   return new Promise((resolve, reject) => {
-    const child = spawn("sshpass", args, {
-      env: { ...process.env, SSHPASS: t.password },
-      stdio: [input === undefined ? "ignore" : "pipe", stdout ?? "pipe", "pipe"],
-    });
+    const conn = new Client();
     let out = "";
     let err = "";
-    child.stdout?.on("data", (d) => (out += d));
-    child.stderr.on("data", (d) => (err += d));
+    let done = false;
+    const finish = (/** @type {Error|null} */ e, /** @type {string} */ v = "") => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      conn.end();
+      if (e) reject(e);
+      else resolve(v);
+    };
     const timer = setTimeout(() => {
-      child.kill("SIGKILL");
-      reject(new SshError("command_timeout", t.host, `Command timed out after ${Math.round(timeout / 1000)} s.`));
+      conn.destroy();
+      finish(new SshError("command_timeout", t.host, `Command timed out after ${Math.round(timeout / 1000)} s.`));
     }, timeout);
-    child.on("error", (e) => {
-      clearTimeout(timer);
-      reject(classify(t.host, null, "", e) || e);
+    conn.on("keyboard-interactive", (_n, _i, _l, prompts, reply) => reply(prompts.map(() => t.password)));
+    conn.on("error", (e) => finish(classify(t.host, e)));
+    // The link dropped (e.g. a reboot) before the command reported an exit status.
+    conn.on("close", () => finish(new SshError("unreachable", t.host, "Connection closed before the command finished.")));
+    conn.on("ready", () => {
+      conn.exec(command, (e, stream) => {
+        if (e) return finish(new Error(`Could not start the command on the robot: ${e.message}`));
+        /** @type {number|undefined} */
+        let code;
+        stream.on("exit", (c) => (code = c));
+        stream.on("data", (/** @type {Buffer} */ d) => (stdout === undefined ? (out += d) : fs.writeSync(stdout, d)));
+        stream.stderr.on("data", (/** @type {Buffer} */ d) => (err += d));
+        stream.on("close", (/** @type {number|undefined} */ c) => {
+          code ??= c;
+          if (code === 0) return finish(null, out.trim());
+          finish(new Error(`Exit ${code ?? "(killed)"} on the robot: ${(err || out).trim().slice(-4000) || "no output"}`));
+        });
+        stream.end(input);
+      });
     });
-    child.on("close", (code) => {
-      clearTimeout(timer);
-      if (code === 0) return resolve(out.trim());
-      const conn = classify(t.host, code, err);
-      reject(conn || new Error(`Exit ${code} on the robot: ${(err || out).trim().slice(-4000) || "no output"}`));
+    conn.connect({
+      host: t.host,
+      port: Number(process.env.ROBOT_SSH_PORT) || 22,
+      username: t.user,
+      password: t.password,
+      tryKeyboard: true,
+      readyTimeout: connectTimeout * 1000,
+      keepaliveInterval: 10000,
     });
-    if (input !== undefined) child.stdin?.end(input);
   });
 }
 
@@ -153,7 +166,8 @@ export const shq = (s) => `'${String(s).replace(/'/g, "'\\''")}'`;
 // picks up script fixes without a restart.
 /** @param {string} name */
 function scriptText(name) {
-  return fs.readFileSync(path.join(SERVER_DIR, "scripts", `${name}.sh`), "utf8");
+  // CRLF from a Windows checkout (core.autocrlf) would break bash on the robot.
+  return fs.readFileSync(path.join(SERVER_DIR, "scripts", `${name}.sh`), "utf8").replace(/\r\n/g, "\n");
 }
 
 /**

@@ -48,9 +48,9 @@ so each call also asks for permission.
 
 ### Step 1: Check the user's PC
 
-The MCP server runs on the user's PC and reaches the robot over SSH. It needs Node.js 18+,
-`sshpass` (e.g. `sudo apt install sshpass`; tools report `sshpass_missing` without it), and the
-robot on the same network (Ethernet for a fresh image, Wi-Fi once configured).
+The MCP server runs on the user's PC (Linux, macOS or Windows) and reaches the robot over SSH
+with its own client, so no `ssh` or `sshpass` is needed. It needs Node.js 18+ and the robot on
+the same network (Ethernet for a fresh image, Wi-Fi once configured).
 
 ### Step 2: Connect
 
@@ -77,6 +77,12 @@ Call `connect_robot`. Its `state` decides the next step:
    with `action=add_wifi`; without it the robot is only reachable over Ethernet.
 4. When `flash.exitCode` is 0: card into the robot, power on, wait about 2 minutes, then
    `connect_robot host=analog.local password=analog`.
+
+Flashing and `add_wifi` need Linux. On Windows or macOS, `list_devices` and `flash` return
+`flashing: "manual"`: after the download, the user writes the zip with Raspberry Pi Imager or
+balenaEtcher. The card's ext4 rootfs can't be written there, so boot the robot on Ethernet,
+`connect_robot host=analog.local password=analog`, and set Wi-Fi with `provision_robot wifi=...`
+in Step 4.
 
 ### Step 4: Provision
 

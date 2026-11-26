@@ -10,7 +10,7 @@ tools is in the skills: `ad-r1m-bringup`, `ad-r1m-robot` and `ad-r1m-slam-integr
 | Path | What |
 |------|------|
 | `server.mjs` | MCP stdio server: the 16 tools, their schemas and annotations |
-| `lib/ssh.mjs` | Selected robot, sshpass, SSH failure classification, script runner |
+| `lib/ssh.mjs` | Selected robot, SSH (`ssh2`), SSH failure classification, script runner |
 | `lib/robot.mjs` | Tools that run on the robot (status, SLAM, Nav2, restart, workspace, provisioning) |
 | `lib/image.mjs` | `build_robot_image` |
 | `lib/local.mjs` | Tools that run on the PC: `kuiper_sd_card`, `rviz` |
@@ -28,14 +28,15 @@ The templates the tools deploy (RTAB-Map, Nav2 point cloud, RViz layout) are in
 
 ## Install
 
-Installing the `datax` plugin starts this server. Claude Code installs its one dependency
-(`@modelcontextprotocol/sdk`, from the plugin's `package.json` and `package-lock.json`)
+Installing the `datax` plugin starts this server. Claude Code installs its dependencies
+(`@modelcontextprotocol/sdk` and `ssh2`, from the plugin's `package.json` and `package-lock.json`)
 into the installed plugin copy. On the PC it needs:
 
-- Node.js 18+
-- `sshpass` (e.g. `sudo apt install sshpass`)
+- Node.js 18+, on Linux, macOS or Windows. SSH is in-process (`ssh2`): no `ssh` or `sshpass` needed
 - For RViz: pixi, or native ROS 2 Humble with `rmw_zenoh_cpp`
-- For `kuiper_sd_card`: Linux with passwordless sudo for `dd`
+- For `kuiper_sd_card` flashing: Linux with passwordless sudo for `dd`. Elsewhere `download` and
+  `status` work and `flash` returns the steps for flashing by hand (Raspberry Pi Imager), with Wi-Fi
+  set afterwards over Ethernet with `provision_robot`
 
 Without these only this server's tools fail; the other datax skills are unaffected.
 
@@ -69,8 +70,9 @@ when the server restarts. `ROBOT_HOST` takes precedence; `AD_R1M_SELECTED_ROBOT_
 file. Caches (repo clones, Kuiper download state, RViz and pixi logs) are under
 `~/.cache/ad-r1m-slam`.
 
-SSH host keys are not recorded: a reflashed robot keeps its hostname but gets a new key, and a
-stale key makes OpenSSH refuse the password login sshpass needs.
+SSH host keys are not checked or recorded: a reflashed robot keeps its hostname but gets a new key.
+`ROBOT_SSH_PORT` changes the SSH port (default 22). Scripts are sent with LF line endings even
+from a Windows checkout (`.gitattributes`, and CRLF is stripped before sending).
 
 ## Demo app
 

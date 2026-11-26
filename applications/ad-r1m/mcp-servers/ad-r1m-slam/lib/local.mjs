@@ -34,11 +34,22 @@ function startJob(dir, name, command, args) {
   const f = (/** @type {string} */ ext) => path.join(dir, `${name}.${ext}`);
   for (const ext of ["log", "exit", "pid"]) fs.rmSync(f(ext), { force: true });
   const log = fs.openSync(f("log"), "a");
-  // A tiny wrapper writes the exit code even if this server is gone by then.
-  const child = spawn("bash", ["-c", '"$@"; echo $? > "$0"', f("exit"), command, ...args], { detached: true, stdio: ["ignore", log, log] });
+  // A tiny wrapper writes the exit code even if this server is gone by then. Node, not bash,
+  // so it runs on Windows too.
+  const child = spawn(process.execPath, ["-e", JOB_WRAPPER, f("exit"), command, ...args], { detached: true, stdio: ["ignore", log, log], windowsHide: true });
+  fs.closeSync(log);
   fs.writeFileSync(f("pid"), String(child.pid));
   child.unref();
 }
+
+const JOB_WRAPPER = `
+const fs = require("fs");
+const [exit, cmd, ...args] = process.argv.slice(1);
+const c = require("child_process").spawn(cmd, args, { stdio: "inherit", windowsHide: true });
+let failed = false;
+c.on("error", (e) => { failed = true; console.error(e.message); fs.writeFileSync(exit, "127"); });
+c.on("close", (n) => failed || fs.writeFileSync(exit, String(n ?? 1)));
+`;
 
 // --- kuiper_sd_card ---------------------------------------------------------------------------
 
@@ -50,8 +61,20 @@ const ASK_WIFI =
   "used before), then call action=add_wifi with device and wifi={ssid, password}; without it the robot is only reachable " +
   "over Ethernet. Then: card into the robot, power up, wait ~2 min, ping analog.local and connect_robot (analog / analog).";
 
+// Flashing and editing the card's ext4 rootfs need lsblk, dd and mount: Linux only. Elsewhere
+// the server downloads the image and the user writes it with Raspberry Pi Imager.
+const CAN_FLASH = process.platform === "linux";
+/** @param {string} zip */
+const manualFlash = (zip) =>
+  `Flashing from this server needs Linux (lsblk, dd, mount); this PC is ${process.platform}. Ask the user to write ${zip} ` +
+  "with Raspberry Pi Imager (Choose OS > Use custom > the .zip; if it holds another .zip, extract that first; skip OS " +
+  "customisation) or balenaEtcher. The card's rootfs is ext4, which Windows/macOS cannot write, so Wi-Fi cannot be added " +
+  "to the card here: boot the robot on Ethernet, connect_robot analog.local (analog / analog), then provision_robot with " +
+  "wifi={ssid, password} (ask the user for the network).";
+
 /** Removable or hot-plug disks up to 512 GB that hold none of this PC's system mounts. */
 function sdDevices() {
+  if (!CAN_FLASH) return [];
   const out = execFileSync("lsblk", ["-J", "-b", "-o", "NAME,PATH,SIZE,TYPE,TRAN,RM,HOTPLUG,MODEL,LABEL,MOUNTPOINTS"], { encoding: "utf-8" });
   const mountsOf = (/** @type {any} */ n) => [...(n.mountpoints || []).filter(Boolean), ...(n.children || []).flatMap(mountsOf)];
   const yes = (/** @type {any} */ v) => v === true || v === "1";
@@ -124,6 +147,7 @@ export async function kuiperSdCard(a) {
   const zip = path.join(dir, path.basename(new URL(url).pathname));
   const local = fs.existsSync(zip) ? fs.statSync(zip).size : 0;
   const device = () => {
+    if (!CAN_FLASH) throw new Error(manualFlash(zip));
     if (!a.device) throw new Error("device is required, e.g. /dev/mmcblk0 - see action=list_devices");
     const d = sdDevices().find((x) => x.device === a.device);
     if (!d) throw new Error(`${a.device} is not a removable disk without system mounts - refusing. Candidates: ${sdDevices().map((x) => x.device).join(", ") || "none"}`);
@@ -137,7 +161,8 @@ export async function kuiperSdCard(a) {
       return {
         url, zip, localBytes: local, remoteBytes: remote, complete: !!local && local === remote,
         download: jobState(KUIPER_DIR, "download"), flash, devices: sdDevices(),
-        ...(flash.exitCode === 0 && !flash.tail.some((l) => /Wi-Fi profile .* added/.test(l)) ? { nextStep: `Flash done. ${ASK_WIFI}` } : {}),
+        ...(!CAN_FLASH ? { flashing: "manual", nextStep: local && local === remote ? manualFlash(zip) : "Run action=download, then the user flashes the card by hand (this PC is not Linux)." } : {}),
+        ...(CAN_FLASH && flash.exitCode === 0 && !flash.tail.some((l) => /Wi-Fi profile .* added/.test(l)) ? { nextStep: `Flash done. ${ASK_WIFI}` } : {}),
       };
     }
     case "download": {
@@ -150,6 +175,7 @@ export async function kuiperSdCard(a) {
       return { started: true, zip, remoteBytes: remote, nextStep: "Poll action=status for progress (2.3 GB)." };
     }
     case "list_devices":
+      if (!CAN_FLASH) return { devices: [], flashing: "manual", note: manualFlash(zip) };
       return { devices: sdDevices(), note: "Only removable/hot-plug disks without this PC's system mounts are listed." };
     case "flash": {
       const dev = device();
@@ -334,7 +360,7 @@ async function rvizStart(rvizConfig, runtime) {
     args = ["-c", 'source "$0" && exec ros2 run rviz2 rviz2 -d "$1"', native.setup, rvizConfig];
   }
   const out = fs.openSync(RVIZ_LOG, "w");
-  const child = spawn(command, args, { env, detached: true, stdio: ["ignore", out, out] });
+  const child = spawn(command, args, { env, detached: true, stdio: ["ignore", out, out], windowsHide: true });
   child.unref();
   fs.closeSync(out);
   if (child.pid) fs.writeFileSync(RVIZ_PID, JSON.stringify({ pid: child.pid, runtime: use }));
