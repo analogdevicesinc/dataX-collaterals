@@ -227,7 +227,7 @@ const TOOLS = [
   },
 ];
 
-const server = new Server({ name: "ad-r1m-slam", version: "0.7.0" }, { capabilities: { tools: {} } });
+const server = new Server({ name: "ad-r1m", version: "0.7.0" }, { capabilities: { tools: {} } });
 
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: TOOLS.map(({ name, description, inputSchema, annotations }) => ({ name, description, inputSchema, annotations })),
@@ -248,4 +248,4 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
 });
 
 await server.connect(new StdioServerTransport());
-console.error("ad-r1m-slam MCP server running on stdio");
+console.error("ad-r1m MCP server running on stdio");

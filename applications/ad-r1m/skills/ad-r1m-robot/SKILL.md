@@ -3,14 +3,14 @@ name: ad-r1m-robot
 description: Runs, tunes and troubleshoots the tested SLAM and Nav2 setup on an AD-R1M robot - RTAB-Map with the ADTF3175D ToF camera, Nav2 on /scan or the point cloud, wheel drive (CANopen) faults - and holds the robot's specs and research-backed RTAB-Map parameters. Use when the user wants to map, navigate, tune RTAB-Map or fix SLAM, TF, sensor or wheel problems on an AD-R1M. For choosing or integrating a different SLAM package use ad-r1m-slam-integration; for setup and connection use ad-r1m-bringup.
 license: Apache-2.0
 allowed-tools:
-  - mcp__plugin_datax_ad-r1m-slam__robot_status
-  - mcp__plugin_datax_ad-r1m-slam__ros2_query
-  - mcp__plugin_datax_ad-r1m-slam__diagnostics
-  - mcp__plugin_datax_ad-r1m-slam__slam
-  - mcp__plugin_datax_ad-r1m-slam__slam_set_params
-  - mcp__plugin_datax_ad-r1m-slam__nav
-  - mcp__plugin_datax_ad-r1m-slam__restart
-  - mcp__plugin_datax_ad-r1m-slam__setup_workspace
+  - mcp__plugin_datax_ad-r1m__robot_status
+  - mcp__plugin_datax_ad-r1m__ros2_query
+  - mcp__plugin_datax_ad-r1m__diagnostics
+  - mcp__plugin_datax_ad-r1m__slam
+  - mcp__plugin_datax_ad-r1m__slam_set_params
+  - mcp__plugin_datax_ad-r1m__nav
+  - mcp__plugin_datax_ad-r1m__restart
+  - mcp__plugin_datax_ad-r1m__setup_workspace
 ---
 
 # AD-R1M Robot: SLAM, Nav2 and troubleshooting

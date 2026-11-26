@@ -3,13 +3,13 @@ name: ad-r1m-bringup
 description: Brings up an AD-R1M robot - flashes the ADI Kuiper SD card, provisions the robot with or without Cloudsmith credentials (building the robot image and system package from source when needed), connects to it, checks its health, and opens RViz on the user's PC with pixi or native ROS 2. Use when the user sets up a new or reflashed AD-R1M, connects to a robot, installs or rebuilds the robot image or system package, has no Cloudsmith credentials, or wants to see the robot in RViz.
 license: Apache-2.0
 allowed-tools:
-  - mcp__plugin_datax_ad-r1m-slam__connect_robot
-  - mcp__plugin_datax_ad-r1m-slam__robot_status
-  - mcp__plugin_datax_ad-r1m-slam__ros2_query
-  - mcp__plugin_datax_ad-r1m-slam__restart
-  - mcp__plugin_datax_ad-r1m-slam__robot_config
-  - mcp__plugin_datax_ad-r1m-slam__collect_support_bundle
-  - mcp__plugin_datax_ad-r1m-slam__rviz
+  - mcp__plugin_datax_ad-r1m__connect_robot
+  - mcp__plugin_datax_ad-r1m__robot_status
+  - mcp__plugin_datax_ad-r1m__ros2_query
+  - mcp__plugin_datax_ad-r1m__restart
+  - mcp__plugin_datax_ad-r1m__robot_config
+  - mcp__plugin_datax_ad-r1m__collect_support_bundle
+  - mcp__plugin_datax_ad-r1m__rviz
 ---
 
 # AD-R1M Bringup

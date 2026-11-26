@@ -3,12 +3,12 @@ name: ad-r1m-slam-integration
 description: Evaluates ROS 2 SLAM packages (ORB-SLAM3, MOLA, KISS-ICP, slam_toolbox, a GitHub repo, ...) against the AD-R1M's hardware from live robot and repository evidence, then installs the chosen one in the robot's SLAM container and integrates it with a generated launch file. Use when the user asks which SLAM package fits the AD-R1M, wants a new or custom SLAM package on it, or setup_workspace reports unresolved dependencies. For running or tuning the tested RTAB-Map setup use ad-r1m-robot.
 license: Apache-2.0
 allowed-tools:
-  - mcp__plugin_datax_ad-r1m-slam__package_evidence
-  - mcp__plugin_datax_ad-r1m-slam__robot_status
-  - mcp__plugin_datax_ad-r1m-slam__ros2_query
-  - mcp__plugin_datax_ad-r1m-slam__setup_workspace
-  - mcp__plugin_datax_ad-r1m-slam__slam
-  - mcp__plugin_datax_ad-r1m-slam__diagnostics
+  - mcp__plugin_datax_ad-r1m__package_evidence
+  - mcp__plugin_datax_ad-r1m__robot_status
+  - mcp__plugin_datax_ad-r1m__ros2_query
+  - mcp__plugin_datax_ad-r1m__setup_workspace
+  - mcp__plugin_datax_ad-r1m__slam
+  - mcp__plugin_datax_ad-r1m__diagnostics
 ---
 
 # SLAM Package Evaluation and Integration
