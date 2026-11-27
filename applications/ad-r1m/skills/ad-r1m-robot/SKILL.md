@@ -11,6 +11,11 @@ allowed-tools:
   - mcp__plugin_datax_ad-r1m__nav
   - mcp__plugin_datax_ad-r1m__restart
   - mcp__plugin_datax_ad-r1m__setup_workspace
+metadata:
+  displayName: AD-R1M SLAM and Navigation (ADI DataX™)
+  program: datax
+  version: 0.7.0
+  owner: Laurentiu Popa
 ---
 
 # AD-R1M Robot: SLAM, Nav2 and troubleshooting

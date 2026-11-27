@@ -9,6 +9,11 @@ allowed-tools:
   - mcp__plugin_datax_ad-r1m__setup_workspace
   - mcp__plugin_datax_ad-r1m__slam
   - mcp__plugin_datax_ad-r1m__diagnostics
+metadata:
+  displayName: AD-R1M SLAM Package Integration (ADI DataX™)
+  program: datax
+  version: 0.7.0
+  owner: Laurentiu Popa
 ---
 
 # SLAM Package Evaluation and Integration

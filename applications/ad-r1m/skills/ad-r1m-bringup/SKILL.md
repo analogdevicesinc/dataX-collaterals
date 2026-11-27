@@ -2,6 +2,7 @@
 name: ad-r1m-bringup
 description: Brings up an AD-R1M robot - flashes the ADI Kuiper SD card, provisions the robot with or without Cloudsmith credentials (building the robot image and system package from source when needed), connects to it, checks its health, and opens RViz on the user's PC with pixi or native ROS 2. Use when the user sets up a new or reflashed AD-R1M, connects to a robot, installs or rebuilds the robot image or system package, has no Cloudsmith credentials, or wants to see the robot in RViz.
 license: Apache-2.0
+compatibility: Needs network access to reach the robot over SSH, download ADI Kuiper images and packages, and install pixi from pixi.sh. Needs sudo on the user's PC to install sshpass and to write the SD card.
 allowed-tools:
   - mcp__plugin_datax_ad-r1m__connect_robot
   - mcp__plugin_datax_ad-r1m__robot_status
@@ -10,6 +11,11 @@ allowed-tools:
   - mcp__plugin_datax_ad-r1m__robot_config
   - mcp__plugin_datax_ad-r1m__collect_support_bundle
   - mcp__plugin_datax_ad-r1m__rviz
+metadata:
+  displayName: AD-R1M Robot Bringup (ADI DataX™)
+  program: datax
+  version: 0.7.0
+  owner: Laurentiu Popa
 ---
 
 # AD-R1M Bringup
@@ -49,7 +55,8 @@ so each call also asks for permission.
 ### Step 1: Check the user's PC
 
 The MCP server runs on the user's PC and reaches the robot over SSH. It needs Node.js 18+,
-`sshpass` (e.g. `sudo apt install sshpass`; tools report `sshpass_missing` without it), and the
+`sshpass` (tools report `sshpass_missing` without it; ask the user to run `sudo apt install sshpass`
+themselves, do not run it for them), and the
 robot on the same network (Ethernet for a fresh image, Wi-Fi once configured).
 
 ### Step 2: Connect
@@ -84,10 +91,10 @@ Ask for the new hostname (`ad-r1m-<number>`), Wi-Fi if needed, and whether the u
 Cloudsmith credentials.
 
 **With credentials**: `provision_robot` with hostname, upgrade, `install_system_package`,
-`docker_image`, `demo_config`, `reboot` and `cloudsmith={user, token}`. Dry run first.
+`docker_image`, `demo_config`, `reboot` and `cloudsmith={user, token}`. Dry run first, show the user the plan and ask before the real run, which writes to the robot and reboots it.
 
 **Without credentials**:
-1. `provision_robot` with hostname, upgrade and reboot. Dry run first.
+1. `provision_robot` with hostname, upgrade and reboot. Dry run first, then ask the user before the real run, which reboots the robot.
 2. `build_robot_image action=start system_package=true` (dry run). Show the plan: release tag,
    apt packages to add, free disk, steps. If prerequisites are missing, call again with
    `install_prerequisites=true` after the user agrees (it uses sudo).
