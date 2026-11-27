@@ -1,6 +1,6 @@
 {
   "name": "datax-ad-r1m",
-  "description": "ADI DataX plugin for the AD-R1M robot",
+  "description": "ADI DataX plugin for the AD-R1M robot: bringup, SLAM, Nav2 and SLAM package integration",
   "owner": {
     "name": "Analog Devices"
   },
