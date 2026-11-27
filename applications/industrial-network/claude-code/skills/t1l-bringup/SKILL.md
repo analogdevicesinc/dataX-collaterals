@@ -1,6 +1,13 @@
 ---
 name: t1l-bringup
 description: Bring up the ADI 10BASE-T1L industrial demo on the host Raspberry Pi (AD-RPI-T1L-PSE) with EVAL-CN0575, APARD32690 + APARD-PFWD / APARD-SPOE and AD-SWIOT1L-SL. Confirms the topology, configures the T1L interfaces, checks every board, starts the CN0575 server and the DataX Industrial GUI. Also runs a status check or a rollback of that setup. Use only when the user asks to set up, bring up, rerun, check or roll back the T1L demo.
+license: Apache-2.0
+compatibility: Runs on the host Raspberry Pi with ADI Kuiper Linux. Needs sudo on the Pi to configure the T1L network interfaces; the user types the sudo password.
+metadata:
+  displayName: 10BASE-T1L Industrial Demo Bringup (ADI DataX™)
+  program: datax
+  version: 1.1.0
+  owner: Monica Constandachi
 ---
 
 # T1L industrial bring-up (v1.1.0)
@@ -46,10 +53,10 @@ Outside the checkpoints, ask only when:
 - Be concise and technical. Keep **facts** (command output) apart from **hypotheses**.
 - **Ask one question per message** and wait for the answer.
 - Read-only commands (`defaults`, `preflight`, `discover`, `reach`, `status`) never need confirmation.
-- After C4, run S3 to S6 without asking again. Print a one-line status after each stage, for example `S3 ✔ t1l_pfwd 192.168.98.1/24 up`.
+- The user approves S3 to S6 as a whole at C4. Then carry them out in order and print a one-line status after each stage, for example `S3 ✔ t1l_pfwd 192.168.98.1/24 up`. Stop and ask if a step would go beyond the approved plan.
 - **Self-healing.** On failure, try the most probable fix from [reference.md#troubleshooting](reference.md#troubleshooting), at most **2 attempts** per problem, and only within the approved plan. If it still fails, report the facts, the most probable cause and the next checks, and continue with the branches that do not depend on it.
 - Never touch the management interface. `t1l.sh` refuses it (exit 3); do not work around that.
-- Never type or store passwords. Never reboot, edit `/boot/*config.txt` or flash firmware without asking.
+- Never type or store passwords. Ask the user before you reboot, edit `/boot/*config.txt` or flash firmware.
 
 ---
 
